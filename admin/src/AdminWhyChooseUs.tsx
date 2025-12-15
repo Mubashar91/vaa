@@ -42,6 +42,9 @@ export default function AdminWhyChooseUs() {
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [dirtyGuard, setDirtyGuard] = useState(false);
+  // Modal-based edit UX
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingWCU, setEditingWCU] = useState<WhyChooseUs | null>(null);
 
   const validate = useCallback((w: WhyChooseUs | null) => {
     const errs: Record<string, string> = {};
@@ -118,6 +121,31 @@ export default function AdminWhyChooseUs() {
     const newItems = [...whyChooseUs.items];
     newItems[idx] = { ...newItems[idx], [key]: value };
     setWhyChooseUs({ ...whyChooseUs, items: newItems });
+  };
+
+  // Modal helpers
+  const openEditModal = () => {
+    if (!whyChooseUs) return;
+    setEditingWCU(JSON.parse(JSON.stringify(whyChooseUs)) as WhyChooseUs);
+    setEditOpen(true);
+  };
+  const applyEditModal = () => {
+    if (editingWCU) setWhyChooseUs(editingWCU);
+    setEditOpen(false);
+  };
+  const setEditingItemField = (idx: number, key: string, value: string) => {
+    if (!editingWCU) return;
+    const items = [...editingWCU.items];
+    items[idx] = { ...items[idx], [key]: value };
+    setEditingWCU({ ...editingWCU, items });
+  };
+  const addEditingItem = () => {
+    if (!editingWCU) return;
+    setEditingWCU({ ...editingWCU, items: [...editingWCU.items, { icon: 'Award', title: '', description: '' }] });
+  };
+  const removeEditingItem = (idx: number) => {
+    if (!editingWCU) return;
+    setEditingWCU({ ...editingWCU, items: editingWCU.items.filter((_, i) => i !== idx) });
   };
 
   const addItem = () => {
@@ -209,6 +237,66 @@ export default function AdminWhyChooseUs() {
                 {isDirty && (
                   <span style={{ padding: '2px 8px', borderRadius: 999, background: 'rgba(234,179,8,0.15)', color: '#facc15', border: '1px solid rgba(234,179,8,0.25)', fontWeight: 700 }}>Unsaved</span>
                 )}
+
+      {editOpen && editingWCU && (
+        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 100 }} onClick={() => setEditOpen(false)}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }} />
+          <div style={{ position: 'relative', background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(51,65,85,0.6)', borderRadius: 16, padding: 20, maxWidth: 980, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>Edit Why Choose Us</h3>
+              <button onClick={() => setEditOpen(false)} style={{ padding: '8px 12px', borderRadius: 10, background: 'rgba(17,24,39,0.6)', color: '#cbd5e1', border: '1px solid rgba(55,65,81,0.6)' }}>×</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Badge</label>
+                <input value={editingWCU.badge} onChange={e => setEditingWCU({ ...editingWCU, badge: e.target.value })} style={{ ...inputBase }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Heading</label>
+                <input value={editingWCU.heading} onChange={e => setEditingWCU({ ...editingWCU, heading: e.target.value })} style={{ ...inputBase }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Description</label>
+                <textarea rows={3} value={editingWCU.description} onChange={e => setEditingWCU({ ...editingWCU, description: e.target.value })} style={{ ...inputBase, minHeight: 80 }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <h4 style={{ color: '#fff', fontWeight: 800 }}>Items ({editingWCU.items.length})</h4>
+                  <button onClick={addEditingItem} style={{ ...btnSecondary, fontSize: 12 }}>+ Add Item</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {editingWCU.items.map((it, idx) => (
+                    <div key={idx} style={{ padding: 12, background: 'rgba(15, 23, 42, 0.4)', borderRadius: 12, border: '1px solid rgba(51, 65, 85, 0.5)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <span style={{ color: '#d4af37', fontWeight: 700 }}>Item {idx + 1}</span>
+                        <button onClick={() => removeEditingItem(idx)} style={{ ...btnSecondary, fontSize: 12, background: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239,68,68,0.3)', color: '#f87171' }}>Remove</button>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: 6, fontSize: 12 }}>Icon</label>
+                          <input value={it.icon} onChange={e => setEditingItemField(idx, 'icon', e.target.value)} style={{ ...inputBase }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: 6, fontSize: 12 }}>Title</label>
+                          <input value={it.title} onChange={e => setEditingItemField(idx, 'title', e.target.value)} style={{ ...inputBase }} />
+                        </div>
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <label style={{ display: 'block', marginBottom: 6, fontSize: 12 }}>Description</label>
+                          <textarea rows={2} value={it.description} onChange={e => setEditingItemField(idx, 'description', e.target.value)} style={{ ...inputBase, minHeight: 60 }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: 14, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setEditOpen(false)} style={{ ...btnSecondary }}>Cancel</button>
+              <button onClick={applyEditModal} style={{ ...btnPrimary, background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' }}>Apply</button>
+            </div>
+          </div>
+        </div>
+      )}
               </div>
             </div>
           </div>
@@ -245,6 +333,16 @@ export default function AdminWhyChooseUs() {
             >
               ↻ Refresh
             </button>
+            {whyChooseUs && (
+              <button 
+                onClick={openEditModal}
+                style={{ ...btnPrimary, background: 'linear-gradient(135deg, #d4af37 0%, #b68c21 100%)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(212, 175, 55, 0.45)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = btnPrimary.boxShadow; }}
+              >
+                ✎ Edit (Modal)
+              </button>
+            )}
           </div>
         </div>
       </div>

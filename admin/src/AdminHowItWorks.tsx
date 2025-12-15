@@ -1,4 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Rocket } from 'lucide-react';
+import {
+  PageHeader,
+  ControlsBar,
+  FormField,
+  AdminInput,
+  AdminTextarea,
+  AdminSelect,
+  StatusBadge,
+  ActionButton,
+  Toast,
+  SectionCard,
+  AddFormCard,
+} from './AdminFormComponents';
 
 type Lang = 'en' | 'de';
 
@@ -51,6 +65,11 @@ export default function AdminHowItWorks() {
   const [savingStep, setSavingStep] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Step | null>(null);
   const [query, setQuery] = useState('');
+  const [tableOpen, setTableOpen] = useState(true);
+
+  // Modal edit state (mirror Pricing admin UX)
+  const [editTarget, setEditTarget] = useState<Step | null>(null);
+  const [editingStep, setEditingStep] = useState<Step | null>(null);
 
   const isDirty = useCallback((idx: number) => {
     if (!originalSteps[idx]) return true;
@@ -199,153 +218,260 @@ export default function AdminHowItWorks() {
     setAddOpen(false);
   };
 
-  const card = { background: '#0b1220', border: '1px solid #1f2937', borderRadius: 14, padding: 16, boxShadow: '0 8px 20px rgba(0,0,0,0.35)' } as const;
-  const chip = { color: '#10b981', background: '#062e24', padding: '6px 12px', borderRadius: 999, fontWeight: 700 } as const;
-  const inputBase = { padding: 10, border: '1px solid #334155', background: '#0f172a', color: '#e5e7eb', borderRadius: 10, outline: 'none' } as const;
-  const btnPrimary = { padding: '8px 12px', borderRadius: 8, background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: 14, border: '1px solid #1d4ed8', cursor: 'pointer' } as const;
-  const btnSecondary = { padding: '8px 12px', borderRadius: 8, background: '#111827', color: '#e5e7eb', fontWeight: 600, fontSize: 14, border: '1px solid #374151', cursor: 'pointer' } as const;
-  const thStyle = { padding: 10, textAlign: 'left' as const, background: '#0b1220', color: '#94a3b8', borderBottom: '1px solid #1f2937', position: 'sticky' as const, top: 0, zIndex: 1, textTransform: 'uppercase', fontSize: 12, letterSpacing: 0.6 };
-  const tdStyle = { padding: 10, borderTop: '1px solid #1f2937', verticalAlign: 'top' as const };
+  // UI now uses shared Tailwind components
 
   return (
-    <div style={{ padding: 0, maxWidth: '100%', margin: '0 auto', color: '#e5e7eb' }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 28, fontWeight: 900, marginBottom: 8, letterSpacing: -0.3, color: '#fff' }}>How It Works Management</h2>
-        <p style={{ color: '#9ca3af', fontSize: 14 }}>Manage your workflow steps for English and German languages</p>
-      </div>
+    <div className="text-slate-200">
+      <PageHeader
+        title="How It Works"
+        description="Manage workflow steps for English and German languages"
+        icon={Rocket}
+        status={(
+          <div className="flex items-center gap-3">
+            <StatusBadge type="info">API: {API_BASE}</StatusBadge>
+            <StatusBadge type={hasToken ? 'success' : 'error'}>{hasToken ? 'Token Active' : 'Token Missing'}</StatusBadge>
+          </div>
+        )}
+      />
 
-      <div style={{ ...card, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <label>Language
-          <select value={lang} onChange={e => setLang(e.target.value as Lang)} style={{ ...inputBase, marginLeft: 8, padding: 8, width: 160 }}>
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
-          </select>
-          </label>
-
-          {loading && <span style={{ color: '#9ca3af' }}>Loading…</span>}
-          {error && <span style={{ color: '#f87171' }}>{error}</span>}
+      <ControlsBar>
+        <div className="flex items-center gap-3 flex-wrap">
+          <FormField label="Language">
+            <AdminSelect value={lang} onChange={e => setLang(e.target.value as Lang)} className="w-40">
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+            </AdminSelect>
+          </FormField>
+          {loading && <span className="text-slate-400 text-sm">Loading…</span>}
+          {error && <span className="text-red-400 text-sm">{error}</span>}
         </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div className="flex items-center gap-3 flex-wrap">
           {!hasToken ? (
             <>
-              <input placeholder="ADMIN_TOKEN" value={token} onChange={e => setToken(e.target.value)} style={{ ...inputBase, width: 260 }} />
-              <button onClick={load} disabled={!hasToken && token.trim().length === 0} style={{ ...btnPrimary, opacity: token.trim() ? 1 : 0.6 }}>Load</button>
+              <AdminInput placeholder="ADMIN_TOKEN" value={token} onChange={e => setToken(e.target.value)} className="w-64" />
+              <ActionButton onClick={load} disabled={!hasToken && token.trim().length === 0}>Load</ActionButton>
               {envToken && (
-                <button onClick={() => setToken(envToken)} style={{ ...btnSecondary }}>Use env token</button>
+                <ActionButton variant="secondary" onClick={() => setToken(envToken)}>Use env token</ActionButton>
               )}
             </>
           ) : (
             <>
-              <span style={chip}>Token loaded</span>
-              <button onClick={() => setToken('')} style={btnSecondary}>Change token</button>
+              <StatusBadge type="success">Token loaded</StatusBadge>
+              <ActionButton variant="secondary" onClick={() => setToken('')}>Change token</ActionButton>
             </>
           )}
-          <div style={{ display: 'flex', gap: 10, marginLeft: 8 }}>
-            <span style={{ color: '#9ca3af', fontSize: 12 }}>API: {API_BASE}</span>
-            <span style={{ color: hasToken ? '#10b981' : '#f87171', fontSize: 12 }}>Token: {hasToken ? 'yes' : 'no'}</span>
-          </div>
         </div>
-      </div>
+      </ControlsBar>
 
-      <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ color: '#9ca3af', fontSize: 13 }}>Steps: {steps.length}</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input placeholder="Search steps…" value={query} onChange={e => setQuery(e.target.value)} style={{ ...inputBase, width: 260 }} />
-          <button onClick={() => load()} style={btnSecondary}>Refresh</button>
-          <button onClick={() => setAddOpen(v => !v)} style={btnPrimary}>{addOpen ? 'Hide Add' : 'Add Step'}</button>
+      <ControlsBar>
+        <div className="text-slate-400 text-sm">Steps: {steps.length}</div>
+        <div className="flex items-center gap-3">
+          <AdminInput placeholder="Search steps…" value={query} onChange={e => setQuery(e.target.value)} className="w-64" />
+          <ActionButton variant="secondary" onClick={() => load()}>Refresh</ActionButton>
+          <ActionButton onClick={() => setAddOpen(true)}>Add Step</ActionButton>
         </div>
-      </div>
+      </ControlsBar>
 
-      <div style={{ ...card, padding: 0, maxHeight: 460, overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ ...thStyle }}>Step #</th>
-              <th style={{ ...thStyle }}>Icon</th>
-              <th style={{ ...thStyle }}>Title</th>
-              <th style={{ ...thStyle }}>Description</th>
-              <th style={{ ...thStyle }}>Step Label</th>
-              <th style={{ ...thStyle }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {steps.map((s, idx) => {
-              const q = query.trim().toLowerCase();
-              const matches = !q || [String(s.stepNumber), s.title, s.description, s.icon, s.stepLabel || ''].join(' ').toLowerCase().includes(q);
-              return (
-              <tr key={s._id || s.stepNumber} onMouseEnter={() => setHoverRow(idx)} onMouseLeave={() => setHoverRow(r => (r===idx?null:r))} style={{ background: hoverRow === idx ? '#0e1a33' : (idx % 2 ? '#0b1426' : 'transparent'), transition: 'background 120ms ease', display: matches ? undefined : 'none' }}>
-                <td style={tdStyle}>
-                  <input type="number" min={1} max={10} value={s.stepNumber} onChange={e => setStepField(idx, 'stepNumber', Number(e.target.value))} style={{ ...inputBase, width: 60, textAlign: 'center' as const }} />
-                </td>
-                <td style={tdStyle}>
-                  <select value={s.icon} onChange={e => setStepField(idx, 'icon', e.target.value)} style={{ ...inputBase, width: 140 }}>
-                    {AVAILABLE_ICONS.map(icon => (
-                      <option key={icon} value={icon}>{icon}</option>
-                    ))}
-                  </select>
-                </td>
-                <td style={tdStyle}>
-                  <input value={s.title} onChange={e => setStepField(idx, 'title', e.target.value)} style={{ ...inputBase, width: '100%' }} />
-                </td>
-                <td style={tdStyle}>
-                  <textarea value={s.description} onChange={e => setStepField(idx, 'description', e.target.value)} style={{ ...inputBase, width: '100%', minHeight: 64, resize: 'vertical' }} />
-                </td>
-                <td style={tdStyle}>
-                  <input value={s.stepLabel || ''} onChange={e => setStepField(idx, 'stepLabel', e.target.value)} style={{ ...inputBase, width: '100%' }} placeholder="e.g., Step 1" />
-                </td>
-                <td style={tdStyle}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button onClick={() => onSave(s)} disabled={!hasToken || !isDirty(idx)} style={{ ...btnPrimary, opacity: hasToken && isDirty(idx) ? 1 : 0.6 }}>{savingStep===s.stepNumber ? 'Saving…' : 'Save'}</button>
-                    <button onClick={() => setSteps(prev => prev.map((ss, i) => (i===idx ? { ...originalSteps[idx] } : ss)))} disabled={!isDirty(idx)} style={{ ...btnSecondary, opacity: isDirty(idx) ? 1 : 0.6 }}>Revert</button>
-                    <button onClick={() => setDeleteTarget(s)} disabled={!hasToken} style={{ ...btnSecondary, opacity: hasToken ? 1 : 0.6 }}>Delete</button>
-                  </div>
-                </td>
+      <SectionCard title="Steps Table" isOpen={tableOpen} onToggle={() => setTableOpen(v => !v)} description="Edit, save or delete existing steps">
+        <div className="overflow-auto rounded-xl border border-slate-700/60">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-900/60 sticky top-0 z-10">
+              <tr className="text-slate-400 uppercase text-xs tracking-wide">
+                <th className="p-3 text-left">Step #</th>
+                <th className="p-3 text-left">Icon</th>
+                <th className="p-3 text-left">Title</th>
+                <th className="p-3 text-left">Description</th>
+                <th className="p-3 text-left">Step Label</th>
+                <th className="p-3 text-left">Actions</th>
               </tr>
-              );
-            })}
-            {steps.length === 0 && (
-              <tr>
-                <td colSpan={6} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>No steps yet. Click "Add Step" to create one.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {steps.map((s, idx) => {
+                const q = query.trim().toLowerCase();
+                const matches = !q || [String(s.stepNumber), s.title, s.description, s.icon, s.stepLabel || ''].join(' ').toLowerCase().includes(q);
+                return (
+                  <tr
+                    key={s._id || s.stepNumber}
+                    onMouseEnter={() => setHoverRow(idx)}
+                    onMouseLeave={() => setHoverRow(r => (r===idx?null:r))}
+                    onClick={() => { setEditTarget(s); setEditingStep({ ...s }); }}
+                    className={`${hoverRow===idx ? 'bg-slate-800/40' : idx % 2 ? 'bg-slate-800/20' : ''} transition-colors ${matches ? '' : 'hidden'}`}
+                  >
+                    <td className="p-3 align-top">
+                      <AdminInput type="number" min={1} max={10} value={s.stepNumber} onChange={e => setStepField(idx, 'stepNumber', Number((e.target as HTMLInputElement).value))} className="w-20 text-center" />
+                    </td>
+                    <td className="p-3 align-top">
+                      <AdminSelect value={s.icon} onChange={e => setStepField(idx, 'icon', (e.target as HTMLSelectElement).value)} className="w-40">
+                        {AVAILABLE_ICONS.map(icon => (
+                          <option key={icon} value={icon}>{icon}</option>
+                        ))}
+                      </AdminSelect>
+                    </td>
+                    <td className="p-3 align-top">
+                      <AdminInput value={s.title} onChange={e => setStepField(idx, 'title', (e.target as HTMLInputElement).value)} />
+                    </td>
+                    <td className="p-3 align-top">
+                      <AdminTextarea value={s.description} onChange={e => setStepField(idx, 'description', (e.target as HTMLTextAreaElement).value)} />
+                    </td>
+                    <td className="p-3 align-top">
+                      <AdminInput value={s.stepLabel || ''} onChange={e => setStepField(idx, 'stepLabel', (e.target as HTMLInputElement).value)} placeholder="e.g., Step 1" />
+                    </td>
+                    <td className="p-3 align-top">
+                      <div className="flex items-center gap-2">
+                        <ActionButton onClick={() => onSave(s)} disabled={!hasToken || !isDirty(idx)} loading={savingStep===s.stepNumber}>Save</ActionButton>
+                        <ActionButton variant="secondary" onClick={() => setSteps(prev => prev.map((ss, i) => (i===idx ? { ...originalSteps[idx] } : ss)))} disabled={!isDirty(idx)}>Revert</ActionButton>
+                        <ActionButton variant="danger" onClick={(e) => { e.stopPropagation(); setDeleteTarget(s); }} disabled={!hasToken}>Delete</ActionButton>
+                        <ActionButton variant="secondary" onClick={(e) => { e.stopPropagation(); setEditTarget(s); setEditingStep({ ...s }); }}>Edit</ActionButton>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {steps.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center text-slate-400">No steps yet. Click "Add Step" to create one.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
 
-      <details open={addOpen} onToggle={e => setAddOpen((e.target as HTMLDetailsElement).open)} style={{ marginTop: 16 }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Add New Step</summary>
-        <div style={{ ...card, marginTop: 10 }}>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <input type="number" placeholder="Step Number" min={1} max={10} value={newStep.stepNumber} onChange={e => setNewStep({ ...newStep, stepNumber: Number(e.target.value) })} style={{ ...inputBase, width: 140 }} />
-            <select value={newStep.icon} onChange={e => setNewStep({ ...newStep, icon: e.target.value })} style={{ ...inputBase, width: 160 }}>
+      <AddFormCard
+        title="Add New Step"
+        isOpen={addOpen}
+        onToggle={() => setAddOpen(v => !v)}
+        onAdd={onAdd}
+        onPrefill={prefillSample}
+        canAdd={Boolean(newStep.stepNumber) && hasToken}
+      >
+        <div className="flex flex-wrap gap-3">
+          <FormField label="Step Number" className="w-36">
+            <AdminInput type="number" min={1} max={10} placeholder="Step Number" value={newStep.stepNumber} onChange={e => setNewStep({ ...newStep, stepNumber: Number((e.target as HTMLInputElement).value) })} />
+          </FormField>
+          <FormField label="Icon" className="w-40">
+            <AdminSelect value={newStep.icon} onChange={e => setNewStep({ ...newStep, icon: (e.target as HTMLSelectElement).value })}>
               {AVAILABLE_ICONS.map(icon => (
                 <option key={icon} value={icon}>{icon}</option>
               ))}
-            </select>
-            <input placeholder="Title" value={newStep.title} onChange={e => setNewStep({ ...newStep, title: e.target.value })} style={{ ...inputBase, flex: '1 1 260px' }} />
-            <input placeholder="Step Label (optional)" value={newStep.stepLabel || ''} onChange={e => setNewStep({ ...newStep, stepLabel: e.target.value })} style={{ ...inputBase, flex: '1 1 200px' }} />
-            <textarea rows={3} placeholder="Description" value={newStep.description} onChange={e => setNewStep({ ...newStep, description: e.target.value })} style={{ ...inputBase, flex: '1 1 100%', minHeight: 80, resize: 'vertical' }} />
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <button onClick={onAdd} disabled={!newStep.stepNumber || !hasToken} style={{ ...btnPrimary, opacity: newStep.stepNumber && hasToken ? 1 : 0.6 }}>Add Step</button>
-            <button onClick={prefillSample} style={{ ...btnSecondary, marginLeft: 8 }}>Prefill sample</button>
-          </div>
+            </AdminSelect>
+          </FormField>
+          <FormField label="Title" className="flex-1 min-w-[260px]">
+            <AdminInput placeholder="Title" value={newStep.title} onChange={e => setNewStep({ ...newStep, title: (e.target as HTMLInputElement).value })} />
+          </FormField>
+          <FormField label="Step Label (optional)" className="flex-1 min-w-[200px]">
+            <AdminInput placeholder="Step Label (optional)" value={newStep.stepLabel || ''} onChange={e => setNewStep({ ...newStep, stepLabel: (e.target as HTMLInputElement).value })} />
+          </FormField>
+          <FormField label="Description" className="w-full">
+            <AdminTextarea rows={3} placeholder="Description" value={newStep.description} onChange={e => setNewStep({ ...newStep, description: (e.target as HTMLTextAreaElement).value })} />
+          </FormField>
         </div>
-      </details>
-      {toast && (
-        <div style={{ position: 'fixed', right: 16, bottom: 16, background: toast.type==='success' ? '#062e24' : '#3f1d1d', color: toast.type==='success' ? '#10b981' : '#f87171', border: '1px solid #1f2937', borderRadius: 10, padding: '10px 14px', fontWeight: 600 }}>
-          {toast.message}
+      </AddFormCard>
+
+      {/* Add Step Modal - mirrors Pricing Add modal */}
+      {addOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-200" onClick={() => setAddOpen(false)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="add-step-modal-title" className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl transition-transform duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gold/20 rounded-lg border border-gold/30">
+                  <Rocket className="w-5 h-5 text-gold" />
+                </div>
+                <h3 id="add-step-modal-title" className="text-xl font-bold text-white">Add New Step</h3>
+              </div>
+              <button onClick={() => setAddOpen(false)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all" aria-label="Close">×</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Step Number">
+                <AdminInput type="number" min={1} max={10} placeholder="Step Number" value={newStep.stepNumber} onChange={e => setNewStep({ ...newStep, stepNumber: Number((e.target as HTMLInputElement).value) })} />
+              </FormField>
+              <FormField label="Icon">
+                <AdminSelect value={newStep.icon} onChange={e => setNewStep({ ...newStep, icon: (e.target as HTMLSelectElement).value })}>
+                  {AVAILABLE_ICONS.map(icon => (
+                    <option key={icon} value={icon}>{icon}</option>
+                  ))}
+                </AdminSelect>
+              </FormField>
+              <FormField label="Title" className="md:col-span-2">
+                <AdminInput placeholder="Title" value={newStep.title} onChange={e => setNewStep({ ...newStep, title: (e.target as HTMLInputElement).value })} />
+              </FormField>
+              <FormField label="Step Label (optional)" className="md:col-span-2">
+                <AdminInput placeholder="Step Label (optional)" value={newStep.stepLabel || ''} onChange={e => setNewStep({ ...newStep, stepLabel: (e.target as HTMLInputElement).value })} />
+              </FormField>
+              <FormField label="Description" className="md:col-span-2">
+                <AdminTextarea rows={4} placeholder="Description" value={newStep.description} onChange={e => setNewStep({ ...newStep, description: (e.target as HTMLTextAreaElement).value })} />
+              </FormField>
+            </div>
+            <div className="flex items-center gap-3 pt-4">
+              <ActionButton variant="primary" onClick={onAdd} disabled={!hasToken || !newStep.stepNumber}>Add Step</ActionButton>
+              <ActionButton variant="secondary" onClick={prefillSample}>Prefill Sample</ActionButton>
+              <ActionButton variant="ghost" onClick={() => setAddOpen(false)}>Close</ActionButton>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Edit Step Modal - mirrors Pricing Edit modal */}
+      {editTarget && editingStep && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-200" onClick={() => { setEditTarget(null); setEditingStep(null); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="edit-step-modal-title" className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl transition-transform duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gold/20 rounded-lg border border-gold/30">
+                  <Rocket className="w-5 h-5 text-gold" />
+                </div>
+                <h3 id="edit-step-modal-title" className="text-xl font-bold text-white">Edit Step: {editTarget.stepNumber}</h3>
+              </div>
+              <button onClick={() => { setEditTarget(null); setEditingStep(null); }} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all" aria-label="Close">×</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Step Number">
+                <AdminInput type="number" value={editingStep.stepNumber} disabled className="font-mono text-slate-400" />
+              </FormField>
+              <FormField label="Icon">
+                <AdminSelect value={editingStep.icon} onChange={e => setEditingStep({ ...editingStep, icon: (e.target as HTMLSelectElement).value })}>
+                  {AVAILABLE_ICONS.map(icon => (
+                    <option key={icon} value={icon}>{icon}</option>
+                  ))}
+                </AdminSelect>
+              </FormField>
+              <FormField label="Title" className="md:col-span-2">
+                <AdminInput value={editingStep.title} onChange={e => setEditingStep({ ...editingStep, title: (e.target as HTMLInputElement).value })} />
+              </FormField>
+              <FormField label="Step Label (optional)" className="md:col-span-2">
+                <AdminInput value={editingStep.stepLabel || ''} onChange={e => setEditingStep({ ...editingStep, stepLabel: (e.target as HTMLInputElement).value })} />
+              </FormField>
+              <FormField label="Description" className="md:col-span-2">
+                <AdminTextarea rows={4} value={editingStep.description} onChange={e => setEditingStep({ ...editingStep, description: (e.target as HTMLTextAreaElement).value })} />
+              </FormField>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <ActionButton variant="secondary" onClick={() => { setEditTarget(null); setEditingStep(null); }}>Cancel</ActionButton>
+              <ActionButton
+                variant="primary"
+                onClick={() => { if (editingStep) void onSave(editingStep); setEditTarget(null); setEditingStep(null); }}
+                disabled={!hasToken}
+                loading={savingStep === editTarget.stepNumber}
+              >
+                Save Changes
+              </ActionButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />
+      )}
+
       {deleteTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: '#0b1220', border: '1px solid #1f2937', borderRadius: 12, padding: 16, minWidth: 340 }}>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>Delete step</div>
-            <div style={{ color: '#cbd5e1', marginBottom: 12 }}>Are you sure you want to delete step {deleteTarget.stepNumber}?</div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={() => setDeleteTarget(null)} style={btnSecondary}>Cancel</button>
-              <button onClick={() => { const t = deleteTarget; setDeleteTarget(null); if (t) void onDelete(t); }} style={btnPrimary}>Delete</button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-slate-900/80 border border-slate-700/60 rounded-2xl p-6 min-w-[340px] shadow-2xl">
+            <div className="font-bold text-white mb-2">Delete step</div>
+            <div className="text-slate-300 mb-4">Are you sure you want to delete step {deleteTarget.stepNumber}?</div>
+            <div className="flex justify-end gap-3">
+              <ActionButton variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</ActionButton>
+              <ActionButton onClick={() => { const t = deleteTarget; setDeleteTarget(null); if (t) void onDelete(t); }}>Delete</ActionButton>
             </div>
           </div>
         </div>

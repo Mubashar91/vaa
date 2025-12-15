@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HelpCircle, Plus, Search, RefreshCw, Save, RotateCcw, Trash2, Globe, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AddFormCard, FormField, AdminInput, AdminTextarea, AdminSelect, PageHeader, ControlsBar, StatusBadge, ActionButton, Toast } from './AdminFormComponents';
 
 type Lang = 'en' | 'de';
 
@@ -25,13 +27,6 @@ export default function AdminFAQ() {
     }
   });
   const hasToken = useMemo(() => token.trim().length > 0, [token]);
-  const envToken = useMemo(() => {
-    try {
-      return ((((import.meta as unknown) as { env?: Record<string, string> }).env?.VITE_ADMIN_TOKEN) || '').trim();
-    } catch {
-      return '';
-    }
-  }, []);
   const headers = useCallback((): Record<string, string> => {
     const tk = token.trim();
     return tk ? { Authorization: `Bearer ${tk}` } : {};
@@ -43,10 +38,14 @@ export default function AdminFAQ() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [hoverRow, setHoverRow] = useState<number | null>(null);
   const [savingOrder, setSavingOrder] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FAQItem | null>(null);
   const [query, setQuery] = useState('');
+  // Modal edit state similar to Pricing/How It Works
+  const [editTarget, setEditTarget] = useState<FAQItem | null>(null);
+  const [editingFAQ, setEditingFAQ] = useState<FAQItem | null>(null);
 
   const isDirty = useCallback((idx: number) => {
     if (!originalFaqs[idx]) return true;
@@ -55,7 +54,7 @@ export default function AdminFAQ() {
 
   const pushToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ type, message });
-    window.setTimeout(() => setToast(null), 2500);
+    window.setTimeout(() => setToast(null), 3000);
   };
 
   useEffect(() => {
@@ -77,6 +76,11 @@ export default function AdminFAQ() {
     try {
       setLoading(true); setError(null);
       const res = await fetch(`${API_BASE}/api/admin/faq?lang=${lang}`, { headers: headers() });
+      if (res.status === 401) {
+        try { localStorage.removeItem('adminToken'); } catch (e) { void e; }
+        window.location.href = '/admin/login';
+        return;
+      }
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
       const data = await res.json();
       const list: FAQItem[] = Array.isArray(data.faqs) ? data.faqs.slice().sort((a: FAQItem, b: FAQItem) => a.order - b.order) : [];
@@ -121,34 +125,45 @@ export default function AdminFAQ() {
 
   const onSave = async (f: FAQItem) => {
     const err = validateCore(f);
-    if (err) return alert(err);
-    if (!hasToken) return alert('Admin token required');
+    if (err) return pushToast(err, 'error');
+    if (!hasToken) return pushToast('Admin token required', 'error');
     const updates: Partial<Omit<FAQItem, 'order'>> = {
       question: f.question,
       answer: f.answer,
     };
     const url = `${API_BASE}/api/admin/faq/${f.order}`;
     setSavingOrder(f.order);
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...headers() },
-      body: JSON.stringify({ lang, updates }),
-    });
-    if (!res.ok) { await logHttpError(res, `PUT ${url}`); setSavingOrder(null); return alert('Save failed: ' + res.status); }
-    await load();
-    pushToast('FAQ saved');
-    setSavingOrder(null);
+    try {
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...headers() },
+        body: JSON.stringify({ lang, updates }),
+      });
+      if (!res.ok) { 
+        await logHttpError(res, `PUT ${url}`); 
+        pushToast(`Save failed: ${res.status}`, 'error');
+        return;
+      }
+      await load();
+      pushToast('FAQ saved successfully');
+    } finally {
+      setSavingOrder(null);
+    }
   };
 
   const onDelete = async (f: FAQItem) => {
-    if (!hasToken) return alert('Admin token required');
+    if (!hasToken) return pushToast('Admin token required', 'error');
     const url = `${API_BASE}/api/admin/faq/${f.order}?lang=${lang}`;
     const res = await fetch(url, {
       method: 'DELETE', headers: headers()
     });
-    if (!res.ok) { await logHttpError(res, `DELETE ${url}`); return alert('Delete failed: ' + res.status); }
+    if (!res.ok) { 
+      await logHttpError(res, `DELETE ${url}`); 
+      pushToast(`Delete failed: ${res.status}`, 'error');
+      return;
+    }
     await load();
-    pushToast('FAQ deleted');
+    pushToast('FAQ deleted successfully');
   };
 
   const [newFAQ, setNewFAQ] = useState<FAQItem>({
@@ -166,222 +181,433 @@ export default function AdminFAQ() {
   };
 
   const onAdd = async () => {
-    if (!hasToken) return alert('Admin token required');
-    if (newFAQ.order < 0) return alert('Order must be non-negative');
-    const existingOrders = new Set(faqs.map(f => f.order));
-    if (existingOrders.has(newFAQ.order)) return alert(`Order ${newFAQ.order} already exists for ${lang}.`);
-    const err = validateCore(newFAQ);
-    if (err) return alert(err);
-    const url = `${API_BASE}/api/admin/faq`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers() },
-      body: JSON.stringify({ lang, faq: newFAQ }),
-    });
-    if (!res.ok) {
-      if (res.status === 409) {
-        return alert('This order already exists for the selected language.');
-      }
-      await logHttpError(res, `POST ${url}`);
-      return alert('Add failed: ' + res.status);
+    if (!hasToken) {
+      pushToast('Admin token required', 'error');
+      return;
     }
-    setNewFAQ({ order: 0, question: '', answer: '' });
-    await load();
-    pushToast('FAQ added');
-    setAddOpen(false);
+    if (newFAQ.order < 0) {
+      pushToast('Order must be non-negative', 'error');
+      return;
+    }
+    const existingOrders = new Set(faqs.map(f => f.order));
+    if (existingOrders.has(newFAQ.order)) {
+      pushToast(`Order ${newFAQ.order} already exists for ${lang}`, 'error');
+      return;
+    }
+    const err = validateCore(newFAQ);
+    if (err) {
+      pushToast(err, 'error');
+      return;
+    }
+    setAdding(true);
+    const url = `${API_BASE}/api/admin/faq`;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers() },
+        body: JSON.stringify({ lang, faq: newFAQ }),
+      });
+      if (!res.ok) {
+        if (res.status === 409) {
+          pushToast('This order already exists for the selected language.', 'error');
+          return;
+        }
+        await logHttpError(res, `POST ${url}`);
+        pushToast(`Add failed: ${res.status}`, 'error');
+        return;
+      }
+      setNewFAQ({ order: 0, question: '', answer: '' });
+      await load();
+      pushToast('FAQ added successfully!');
+      setAddOpen(false);
+    } finally {
+      setAdding(false);
+    }
   };
 
-  const card = { background: 'rgba(30, 41, 59, 0.4)', border: '1px solid rgba(51, 65, 85, 0.5)', borderRadius: 16, padding: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.3)', backdropFilter: 'blur(12px)' } as const;
-  const chip = { color: '#34d399', background: 'rgba(16, 185, 129, 0.15)', padding: '6px 14px', borderRadius: 999, fontWeight: 700, border: '1px solid rgba(16, 185, 129, 0.3)' } as const;
-  const inputBase = { padding: '10px 14px', border: '1px solid rgba(51, 65, 85, 0.6)', background: 'rgba(15, 23, 42, 0.6)', color: '#e2e8f0', borderRadius: 12, outline: 'none', transition: 'all 0.2s', fontSize: 14 } as const;
-  const inputFocus = { border: '1px solid rgba(212, 175, 55, 0.5)', background: 'rgba(15, 23, 42, 0.8)', boxShadow: '0 0 0 3px rgba(212, 175, 55, 0.1)' } as const;
-  const btnPrimary = { padding: '10px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: '#fff', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)' } as const;
-  const btnSecondary = { padding: '10px 16px', borderRadius: 10, background: 'rgba(17, 24, 39, 0.6)', color: '#cbd5e1', fontWeight: 600, fontSize: 14, border: '1px solid rgba(55, 65, 81, 0.6)', cursor: 'pointer', transition: 'all 0.2s' } as const;
-  const thStyle = { padding: '14px 12px', textAlign: 'left' as const, background: 'rgba(15, 23, 42, 0.8)', color: '#94a3b8', borderBottom: '2px solid rgba(51, 65, 85, 0.5)', position: 'sticky' as const, top: 0, zIndex: 1, textTransform: 'uppercase', fontSize: 11, letterSpacing: 1, fontWeight: 700 };
-  const tdStyle = { padding: '14px 12px', borderTop: '1px solid rgba(51, 65, 85, 0.3)', verticalAlign: 'top' as const, background: 'transparent' };
+  if (loading && faqs.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <div className="text-white text-lg flex items-center gap-3">
+          <RefreshCw className="w-5 h-5 animate-spin" />
+          <span>Loading FAQs...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: 0, maxWidth: '100%', margin: '0 auto', color: '#e2e8f0' }}>
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <div style={{ width: 4, height: 32, background: 'linear-gradient(to bottom, #d4af37, #fbbf24)', borderRadius: 2 }}></div>
-          <div>
-            <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 4, letterSpacing: -0.5, color: '#fff', background: 'linear-gradient(to right, #fff, #cbd5e1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>FAQ Management</h2>
-            <p style={{ color: '#94a3b8', fontSize: 15 }}>Manage your FAQ items for English and German languages</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      {/* Animated background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 -left-4 w-72 h-72 bg-gold/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 -right-4 w-72 h-72 bg-gold/5 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="relative w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <PageHeader
+          title="FAQ Management"
+          description="Manage frequently asked questions for English and German languages"
+          icon={HelpCircle}
+          status={
+            <div className="flex items-center gap-3">
+              {error && <StatusBadge type="error" icon={AlertCircle}>{error}</StatusBadge>}
+              <StatusBadge type={hasToken ? 'success' : 'error'}>
+                {hasToken ? 'Authenticated' : 'Not Authenticated'}
+              </StatusBadge>
+            </div>
+          }
+        />
+
+        <ControlsBar>
+          <div className="flex flex-col sm:flex-row gap-4 flex-1">
+            <div className="flex-1 max-w-xs">
+              <FormField label="Language">
+                <AdminSelect
+                  value={lang}
+                  onChange={(e) => setLang(e.target.value as Lang)}
+                >
+                  <option value="en">🇺🇸 English</option>
+                  <option value="de">🇩🇪 Deutsch</option>
+                </AdminSelect>
+              </FormField>
+            </div>
+            <div className="flex items-center gap-3 flex-1">
+              <div className="flex-1 max-w-md relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <AdminInput
+                  type="text"
+                  placeholder="Search FAQs..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <ActionButton
+                variant="secondary"
+                onClick={load}
+                disabled={loading}
+                icon={RefreshCw}
+                loading={loading}
+              >
+                Refresh
+              </ActionButton>
+              <ActionButton
+                variant="primary"
+                onClick={() => setAddOpen(true)}
+                icon={Plus}
+              >
+                Add FAQ
+              </ActionButton>
+            </div>
           </div>
-        </div>
-      </div>
+        </ControlsBar>
 
-      <div style={{ ...card, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <label>Language
-          <select value={lang} onChange={e => setLang(e.target.value as Lang)} style={{ ...inputBase, marginLeft: 8, padding: 8, width: 160 }}>
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
-          </select>
-          </label>
-
-          {loading && <span style={{ color: '#9ca3af' }}>Loading…</span>}
-          {error && <span style={{ color: '#f87171' }}>{error}</span>}
-        </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          {!hasToken ? (
-            <>
-              <input placeholder="ADMIN_TOKEN" value={token} onChange={e => setToken(e.target.value)} style={{ ...inputBase, width: 260 }} />
-              <button onClick={load} disabled={!hasToken && token.trim().length === 0} style={{ ...btnPrimary, opacity: token.trim() ? 1 : 0.6 }}>Load</button>
-              {envToken && (
-                <button onClick={() => setToken(envToken)} style={{ ...btnSecondary }}>Use env token</button>
-              )}
-            </>
-          ) : (
-            <>
-              <span style={chip}>Token loaded</span>
-              <button onClick={() => setToken('')} style={btnSecondary}>Change token</button>
-            </>
-          )}
-          <div style={{ display: 'flex', gap: 10, marginLeft: 8 }}>
-            <span style={{ color: '#9ca3af', fontSize: 12 }}>API: {API_BASE}</span>
-            <span style={{ color: hasToken ? '#10b981' : '#f87171', fontSize: 12 }}>Token: {hasToken ? 'yes' : 'no'}</span>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ color: '#9ca3af', fontSize: 13 }}>FAQs: {faqs.length}</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input placeholder="Search FAQs…" value={query} onChange={e => setQuery(e.target.value)} style={{ ...inputBase, width: 260 }} />
-          <button onClick={() => load()} style={btnSecondary}>Refresh</button>
-          <button onClick={() => setAddOpen(v => !v)} style={btnPrimary}>{addOpen ? 'Hide Add' : 'Add FAQ'}</button>
-        </div>
-      </div>
-
-      <div style={{ ...card, padding: 0, maxHeight: 460, overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ ...thStyle }}>Order</th>
-              <th style={{ ...thStyle }}>Question</th>
-              <th style={{ ...thStyle }}>Answer</th>
-              <th style={{ ...thStyle }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {faqs.map((f, idx) => {
-              const q = query.trim().toLowerCase();
-              const matches = !q || [String(f.order), f.question, f.answer].join(' ').toLowerCase().includes(q);
-              return (
-              <tr key={f._id || f.order} onMouseEnter={() => setHoverRow(idx)} onMouseLeave={() => setHoverRow(r => (r===idx?null:r))} style={{ background: hoverRow === idx ? '#0e1a33' : (idx % 2 ? '#0b1426' : 'transparent'), transition: 'background 120ms ease', display: matches ? undefined : 'none' }}>
-                <td style={tdStyle}>
-                  <input type="number" min={0} value={f.order} onChange={e => setFAQField(idx, 'order', Number(e.target.value))} style={{ ...inputBase, width: 80, textAlign: 'center' as const }} />
-                </td>
-                <td style={tdStyle}>
-                  <input value={f.question} onChange={e => setFAQField(idx, 'question', e.target.value)} style={{ ...inputBase, width: '100%' }} />
-                </td>
-                <td style={tdStyle}>
-                  <textarea value={f.answer} onChange={e => setFAQField(idx, 'answer', e.target.value)} style={{ ...inputBase, width: '100%', minHeight: 64, resize: 'vertical' }} />
-                </td>
-                <td style={tdStyle}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button onClick={() => onSave(f)} disabled={!hasToken || !isDirty(idx)} style={{ ...btnPrimary, opacity: hasToken && isDirty(idx) ? 1 : 0.6 }}>{savingOrder===f.order ? 'Saving…' : 'Save'}</button>
-                    <button onClick={() => setFaqs(prev => prev.map((ff, i) => (i===idx ? { ...originalFaqs[idx] } : ff)))} disabled={!isDirty(idx)} style={{ ...btnSecondary, opacity: isDirty(idx) ? 1 : 0.6 }}>Revert</button>
-                    <button onClick={() => setDeleteTarget(f)} disabled={!hasToken} style={{ ...btnSecondary, opacity: hasToken ? 1 : 0.6 }}>Delete</button>
-                  </div>
-                </td>
-              </tr>
-              );
-            })}
-            {faqs.length === 0 && (
-              <tr>
-                <td colSpan={4} style={{ padding: 40, textAlign: 'center' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                    <div style={{ fontSize: 48, opacity: 0.3 }}>❓</div>
-                    <p style={{ color: '#94a3b8', fontSize: 15 }}>No FAQs yet. Click "Add FAQ" to create one.</p>
-                  </div>
-                </td>
-              </tr>
+        {/* Stats Bar */}
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 mb-6 shadow-xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div>
+                <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Total FAQs</div>
+                <div className="text-2xl font-bold text-white">{faqs.length}</div>
+              </div>
+              <div className="h-8 w-px bg-slate-700/60"></div>
+              <div>
+                <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Language</div>
+                <div className="text-lg font-semibold text-gold">{lang === 'en' ? 'English' : 'Deutsch'}</div>
+              </div>
+            </div>
+            {faqs.length > 0 && (
+              <div className="text-sm text-slate-400">
+                Showing {faqs.filter((f, idx) => {
+                  const q = query.trim().toLowerCase();
+                  return !q || [String(f.order), f.question, f.answer].join(' ').toLowerCase().includes(q);
+                }).length} of {faqs.length}
+              </div>
             )}
-          </tbody>
-        </table>
-      </div>
-
-      <details open={addOpen} onToggle={e => setAddOpen((e.target as HTMLDetailsElement).open)} style={{ marginTop: 16 }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Add New FAQ</summary>
-        <div style={{ ...card, marginTop: 10 }}>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <input type="number" placeholder="Order" min={0} value={newFAQ.order} onChange={e => setNewFAQ({ ...newFAQ, order: Number(e.target.value) })} style={{ ...inputBase, width: 140 }} />
-            <input placeholder="Question" value={newFAQ.question} onChange={e => setNewFAQ({ ...newFAQ, question: e.target.value })} style={{ ...inputBase, flex: '1 1 260px' }} />
-            <textarea rows={3} placeholder="Answer" value={newFAQ.answer} onChange={e => setNewFAQ({ ...newFAQ, answer: e.target.value })} style={{ ...inputBase, flex: '1 1 100%', minHeight: 80, resize: 'vertical' }} />
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <button onClick={onAdd} disabled={newFAQ.order < 0 || !hasToken} style={{ ...btnPrimary, opacity: newFAQ.order >= 0 && hasToken ? 1 : 0.6 }}>Add FAQ</button>
-            <button onClick={prefillSample} style={{ ...btnSecondary, marginLeft: 8 }}>Prefill sample</button>
           </div>
         </div>
-      </details>
-      {toast && (
-        <div style={{ 
-          position: 'fixed', 
-          right: 20, 
-          bottom: 20, 
-          background: toast.type==='success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', 
-          color: toast.type==='success' ? '#34d399' : '#f87171', 
-          border: `1px solid ${toast.type==='success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`, 
-          borderRadius: 12, 
-          padding: '14px 18px', 
-          fontWeight: 600,
-          backdropFilter: 'blur(12px)',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          zIndex: 1000
-        }}>
-          <span style={{ fontSize: 20 }}>{toast.type==='success' ? '✓' : '⚠'}</span>
-          <span>{toast.message}</span>
+
+        {/* FAQs Table */}
+        {faqs.length > 0 ? (
+          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl shadow-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-700/60 bg-slate-900/40">
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Order</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Question</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Answer</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/30">
+                  {faqs.map((f, idx) => {
+                    const q = query.trim().toLowerCase();
+                    const matches = !q || [String(f.order), f.question, f.answer].join(' ').toLowerCase().includes(q);
+                    if (!matches) return null;
+                    const dirty = isDirty(idx);
+                    return (
+                      <tr
+                        key={f._id || f.order}
+                        onMouseEnter={() => setHoverRow(idx)}
+                        onMouseLeave={() => setHoverRow(null)}
+                        onClick={() => { setEditTarget(f); setEditingFAQ({ ...f }); }}
+                        className={`transition-colors ${
+                          hoverRow === idx
+                            ? 'bg-slate-800/50'
+                            : idx % 2
+                            ? 'bg-slate-900/20'
+                            : 'bg-transparent'
+                        } cursor-pointer`}
+                      >
+                        <td className="px-4 py-4">
+                          <AdminInput
+                            type="number"
+                            min={0}
+                            value={f.order}
+                            onChange={(e) => setFAQField(idx, 'order', Number(e.target.value))}
+                            className="w-20 text-center"
+                          />
+                        </td>
+                        <td className="px-4 py-4">
+                          <AdminInput
+                            type="text"
+                            value={f.question}
+                            onChange={(e) => setFAQField(idx, 'question', e.target.value)}
+                            className="w-full"
+                          />
+                        </td>
+                        <td className="px-4 py-4">
+                          <AdminTextarea
+                            value={f.answer}
+                            onChange={(e) => setFAQField(idx, 'answer', e.target.value)}
+                            className="w-full min-h-[80px]"
+                            rows={3}
+                          />
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <ActionButton
+                              variant="primary"
+                              size="sm"
+                              onClick={() => onSave(f)}
+                              disabled={!hasToken || !dirty}
+                              loading={savingOrder === f.order}
+                              icon={Save}
+                            >
+                              Save
+                            </ActionButton>
+                            <ActionButton
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setFaqs(prev => prev.map((ff, i) => (i === idx ? { ...originalFaqs[idx] } : ff)))}
+                              disabled={!dirty}
+                              icon={RotateCcw}
+                            >
+                              Revert
+                            </ActionButton>
+                            <ActionButton
+                              variant="danger"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); setDeleteTarget(f); }}
+                              disabled={!hasToken}
+                              icon={Trash2}
+                            >
+                              Delete
+                            </ActionButton>
+                            <ActionButton
+                              variant="secondary"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); setEditTarget(f); setEditingFAQ({ ...f }); }}
+                            >
+                              Edit
+                            </ActionButton>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-12 shadow-xl text-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-slate-700/50 flex items-center justify-center">
+                <HelpCircle className="w-8 h-8 text-slate-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2">No FAQs yet</h3>
+                <p className="text-slate-400 text-sm">Get started by adding your first frequently asked question</p>
+              </div>
+              <ActionButton
+                variant="primary"
+                onClick={() => setAddOpen(true)}
+                icon={Plus}
+              >
+                Add Your First FAQ
+              </ActionButton>
+            </div>
+          </div>
+        )}
+
+        {/* Add Form */}
+        <div className="mt-6">
+          <AddFormCard
+            title="Add New FAQ"
+            isOpen={addOpen}
+            onToggle={() => setAddOpen(!addOpen)}
+            icon={HelpCircle}
+            description="Create a new frequently asked question"
+            onAdd={onAdd}
+            onPrefill={prefillSample}
+            canAdd={newFAQ.order >= 0 && hasToken && !!newFAQ.question.trim() && !!newFAQ.answer.trim()}
+            adding={adding}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField label="Order" required helpText="Display order (must be unique)">
+                <AdminInput
+                  type="number"
+                  min={0}
+                  value={newFAQ.order}
+                  onChange={(e) => setNewFAQ({ ...newFAQ, order: Number(e.target.value) })}
+                  placeholder="0"
+                  error={newFAQ.order < 0}
+                />
+              </FormField>
+              <FormField label="Question" required className="md:col-span-2">
+                <AdminInput
+                  type="text"
+                  value={newFAQ.question}
+                  onChange={(e) => setNewFAQ({ ...newFAQ, question: e.target.value })}
+                  placeholder="e.g., How does it work?"
+                />
+              </FormField>
+            </div>
+            <FormField label="Answer" required helpText="Detailed answer to the question">
+              <AdminTextarea
+                value={newFAQ.answer}
+                onChange={(e) => setNewFAQ({ ...newFAQ, answer: e.target.value })}
+                placeholder="Provide a detailed answer..."
+                rows={4}
+              />
+            </FormField>
+          </AddFormCard>
+        </div>
+      </div>
+
+      {/* Add FAQ Modal */}
+      {addOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setAddOpen(false)}>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-2xl max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gold/20 rounded-lg border border-gold/30">
+                  <HelpCircle className="w-5 h-5 text-gold" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Add New FAQ</h3>
+              </div>
+              <button onClick={() => setAddOpen(false)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg" aria-label="Close">×</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField label="Order" required>
+                <AdminInput type="number" min={0} value={newFAQ.order} onChange={(e) => setNewFAQ({ ...newFAQ, order: Number(e.target.value) })} />
+              </FormField>
+              <FormField label="Question" required className="md:col-span-2">
+                <AdminInput type="text" value={newFAQ.question} onChange={(e) => setNewFAQ({ ...newFAQ, question: e.target.value })} />
+              </FormField>
+              <FormField label="Answer" required className="md:col-span-3">
+                <AdminTextarea rows={4} value={newFAQ.answer} onChange={(e) => setNewFAQ({ ...newFAQ, answer: e.target.value })} />
+              </FormField>
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-4">
+              <ActionButton variant="secondary" onClick={prefillSample}>Prefill Sample</ActionButton>
+              <ActionButton variant="primary" onClick={onAdd} disabled={!hasToken || newFAQ.order < 0 || !newFAQ.question.trim() || !newFAQ.answer.trim()} loading={adding}>Add FAQ</ActionButton>
+            </div>
+          </div>
         </div>
       )}
-      {deleteTarget && (
-        <div style={{ 
-          position: 'fixed', 
-          inset: 0, 
-          background: 'rgba(0,0,0,0.7)', 
-          backdropFilter: 'blur(4px)',
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          zIndex: 50 
-        }}>
-          <div style={{ 
-            background: 'rgba(30, 41, 59, 0.95)', 
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(51, 65, 85, 0.5)', 
-            borderRadius: 16, 
-            padding: 24, 
-            minWidth: 400,
-            maxWidth: '90%',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
-          }}>
-            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 12, color: '#fff' }}>🗑 Delete FAQ</div>
-            <div style={{ color: '#cbd5e1', marginBottom: 20, lineHeight: 1.6 }}>
-              Are you sure you want to delete FAQ with order <strong style={{ color: '#f87171' }}>{deleteTarget.order}</strong>? This action cannot be undone.
+
+      {/* Edit FAQ Modal */}
+      {editTarget && editingFAQ && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setEditTarget(null); setEditingFAQ(null); }}>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-2xl max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gold/20 rounded-lg border border-gold/30">
+                  <HelpCircle className="w-5 h-5 text-gold" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Edit FAQ (Order: {editTarget.order})</h3>
+              </div>
+              <button onClick={() => { setEditTarget(null); setEditingFAQ(null); }} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg" aria-label="Close">×</button>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button 
-                onClick={() => setDeleteTarget(null)} 
-                style={{ ...btnSecondary }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(17, 24, 39, 0.8)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = btnSecondary.background; }}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField label="Order">
+                <AdminInput type="number" value={editingFAQ.order} disabled className="font-mono" />
+              </FormField>
+              <FormField label="Question" className="md:col-span-2">
+                <AdminInput type="text" value={editingFAQ.question} onChange={(e) => setEditingFAQ({ ...editingFAQ, question: e.target.value })} />
+              </FormField>
+              <FormField label="Answer" className="md:col-span-3">
+                <AdminTextarea rows={4} value={editingFAQ.answer} onChange={(e) => setEditingFAQ({ ...editingFAQ, answer: e.target.value })} />
+              </FormField>
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-4">
+              <ActionButton variant="secondary" onClick={() => { setEditTarget(null); setEditingFAQ(null); }}>Cancel</ActionButton>
+              <ActionButton variant="primary" onClick={() => { if (editingFAQ) void onSave(editingFAQ); setEditTarget(null); setEditingFAQ(null); }} disabled={!hasToken} loading={savingOrder === editTarget.order}>Save Changes</ActionButton>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Toast */}
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setDeleteTarget(null)}
+          />
+          <div className="relative bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-2xl max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-500/20 rounded-lg border border-red-500/30">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Delete FAQ</h3>
+            </div>
+            <p className="text-slate-300 mb-6 leading-relaxed">
+              Are you sure you want to delete the FAQ with order <span className="font-semibold text-red-400">{deleteTarget.order}</span>? 
+              This action cannot be undone.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <ActionButton
+                variant="secondary"
+                onClick={() => setDeleteTarget(null)}
               >
                 Cancel
-              </button>
-              <button 
-                onClick={() => { const t = deleteTarget; setDeleteTarget(null); if (t) void onDelete(t); }} 
-                style={{ ...btnPrimary, background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.4)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)'; }}
+              </ActionButton>
+              <ActionButton
+                variant="danger"
+                onClick={() => {
+                  const t = deleteTarget;
+                  setDeleteTarget(null);
+                  if (t) void onDelete(t);
+                }}
+                icon={Trash2}
               >
-                Delete
-              </button>
+                Delete FAQ
+              </ActionButton>
             </div>
           </div>
         </div>
@@ -391,6 +617,5 @@ export default function AdminFAQ() {
 }
 
 function isEqualFAQ(a: FAQItem, b: FAQItem) {
-  return a.order===b.order && a.question===b.question && a.answer===b.answer;
+  return a.order === b.order && a.question === b.question && a.answer === b.answer;
 }
-

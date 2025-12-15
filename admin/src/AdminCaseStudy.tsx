@@ -57,6 +57,9 @@ export default function AdminCaseStudy() {
   const [savingId, setSavingId] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CaseStudy | null>(null);
   const [query, setQuery] = useState('');
+  // Modal edit state similar to other admin pages
+  const [editTarget, setEditTarget] = useState<CaseStudy | null>(null);
+  const [editingCaseStudy, setEditingCaseStudy] = useState<CaseStudy | null>(null);
 
   const isDirty = useCallback((idx: number) => {
     if (!originalCaseStudies[idx]) return true;
@@ -139,7 +142,8 @@ export default function AdminCaseStudy() {
   };
 
   const logHttpError = async (res: Response, context: string) => {
-    if (import.meta.env.DEV) {
+    const __ENV = ((import.meta as unknown) as { env?: Record<string, any> }).env || {};
+    if (__ENV && __ENV.DEV) {
       let body = '';
       try { body = await res.clone().text(); } catch { /* ignore */ }
       console.error('[AdminCaseStudy] request failed', {
@@ -300,7 +304,7 @@ export default function AdminCaseStudy() {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input placeholder="Search case studies…" value={query} onChange={e => setQuery(e.target.value)} style={{ ...inputBase, width: 260 }} />
           <button onClick={() => load()} style={btnSecondary}>Refresh</button>
-          <button onClick={() => setAddOpen(v => !v)} style={btnPrimary}>{addOpen ? 'Hide Add' : 'Add Case Study'}</button>
+          <button onClick={() => setAddOpen(true)} style={btnPrimary}>Add Case Study</button>
         </div>
       </div>
 
@@ -320,7 +324,7 @@ export default function AdminCaseStudy() {
               const q = query.trim().toLowerCase();
               const matches = !q || [String(c.caseStudyId), c.title, c.company, c.industry].join(' ').toLowerCase().includes(q);
               return (
-              <tr key={c._id || c.caseStudyId} onMouseEnter={() => setHoverRow(idx)} onMouseLeave={() => setHoverRow(r => (r===idx?null:r))} style={{ background: hoverRow === idx ? '#0e1a33' : (idx % 2 ? '#0b1426' : 'transparent'), transition: 'background 120ms ease', display: matches ? undefined : 'none' }}>
+              <tr key={c._id || c.caseStudyId} onMouseEnter={() => setHoverRow(idx)} onMouseLeave={() => setHoverRow(r => (r===idx?null:r))} onClick={() => { setEditTarget(c); setEditingCaseStudy({ ...c }); }} style={{ background: hoverRow === idx ? '#0e1a33' : (idx % 2 ? '#0b1426' : 'transparent'), transition: 'background 120ms ease', display: matches ? undefined : 'none', cursor: 'pointer' }}>
                 <td style={tdStyle}>
                   <input type="number" min={1} value={c.caseStudyId} onChange={e => setCaseStudyField(idx, 'caseStudyId', Number(e.target.value))} style={{ ...inputBase, width: 80, textAlign: 'center' as const }} />
                 </td>
@@ -337,7 +341,7 @@ export default function AdminCaseStudy() {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button onClick={() => onSave(c)} disabled={!hasToken || !isDirty(idx)} style={{ ...btnPrimary, opacity: hasToken && isDirty(idx) ? 1 : 0.6 }}>{savingId===c.caseStudyId ? 'Saving…' : 'Save'}</button>
                     <button onClick={() => setCaseStudies(prev => prev.map((cc, i) => (i===idx ? { ...originalCaseStudies[idx] } : cc)))} disabled={!isDirty(idx)} style={{ ...btnSecondary, opacity: isDirty(idx) ? 1 : 0.6 }}>Revert</button>
-                    <button onClick={() => setDeleteTarget(c)} disabled={!hasToken} style={{ ...btnSecondary, opacity: hasToken ? 1 : 0.6 }}>Delete</button>
+                    <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(c); }} disabled={!hasToken} style={{ ...btnSecondary, opacity: hasToken ? 1 : 0.6 }}>Delete</button>
                   </div>
                 </td>
               </tr>
@@ -413,48 +417,108 @@ export default function AdminCaseStudy() {
         );
       })}
 
-      <details open={addOpen} onToggle={e => setAddOpen((e.target as HTMLDetailsElement).open)} style={{ marginTop: 16 }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Add New Case Study</summary>
-        <div style={{ ...card, marginTop: 10 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <input type="number" placeholder="Case Study ID" min={1} value={newCaseStudy.caseStudyId} onChange={e => setNewCaseStudy({ ...newCaseStudy, caseStudyId: Number(e.target.value) })} style={{ ...inputBase, width: 140 }} />
-              <input placeholder="Title" value={newCaseStudy.title} onChange={e => setNewCaseStudy({ ...newCaseStudy, title: e.target.value })} style={{ ...inputBase, flex: '1 1 260px' }} />
-              <input placeholder="Company" value={newCaseStudy.company} onChange={e => setNewCaseStudy({ ...newCaseStudy, company: e.target.value })} style={{ ...inputBase, flex: '1 1 200px' }} />
-              <input placeholder="Industry" value={newCaseStudy.industry} onChange={e => setNewCaseStudy({ ...newCaseStudy, industry: e.target.value })} style={{ ...inputBase, flex: '1 1 200px' }} />
+      {/* Add Case Study Modal */}
+      {addOpen && (
+        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 50 }} onClick={() => setAddOpen(false)}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'relative', background: '#0b1220', border: '1px solid #1f2937', borderRadius: 14, padding: 16, maxWidth: 900, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>Add New Case Study</h3>
+              <button onClick={() => setAddOpen(false)} style={{ ...btnSecondary }}>×</button>
             </div>
-            <textarea rows={2} placeholder="Challenge" value={newCaseStudy.challenge} onChange={e => setNewCaseStudy({ ...newCaseStudy, challenge: e.target.value })} style={{ ...inputBase, width: '100%', minHeight: 60 }} />
-            <textarea rows={2} placeholder="Solution" value={newCaseStudy.solution} onChange={e => setNewCaseStudy({ ...newCaseStudy, solution: e.target.value })} style={{ ...inputBase, width: '100%', minHeight: 60 }} />
-            <textarea rows={2} placeholder="Testimonial" value={newCaseStudy.testimonial} onChange={e => setNewCaseStudy({ ...newCaseStudy, testimonial: e.target.value })} style={{ ...inputBase, width: '100%', minHeight: 60 }} />
-            <div style={{ display: 'flex', gap: 10 }}>
-              <input placeholder="Testimonial Author" value={newCaseStudy.testimonialAuthor} onChange={e => setNewCaseStudy({ ...newCaseStudy, testimonialAuthor: e.target.value })} style={{ ...inputBase, flex: 1 }} />
-              <input placeholder="Testimonial Role" value={newCaseStudy.testimonialRole} onChange={e => setNewCaseStudy({ ...newCaseStudy, testimonialRole: e.target.value })} style={{ ...inputBase, flex: 1 }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <input type="number" placeholder="Case Study ID" min={1} value={newCaseStudy.caseStudyId} onChange={e => setNewCaseStudy({ ...newCaseStudy, caseStudyId: Number((e.target as HTMLInputElement).value) })} style={{ ...inputBase, width: 140 }} />
+                <input placeholder="Title" value={newCaseStudy.title} onChange={e => setNewCaseStudy({ ...newCaseStudy, title: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+                <input placeholder="Company" value={newCaseStudy.company} onChange={e => setNewCaseStudy({ ...newCaseStudy, company: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 200px' }} />
+                <input placeholder="Industry" value={newCaseStudy.industry} onChange={e => setNewCaseStudy({ ...newCaseStudy, industry: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 200px' }} />
+              </div>
+              <textarea rows={2} placeholder="Challenge" value={newCaseStudy.challenge} onChange={e => setNewCaseStudy({ ...newCaseStudy, challenge: (e.target as HTMLTextAreaElement).value })} style={{ ...inputBase, width: '100%', minHeight: 60 }} />
+              <textarea rows={2} placeholder="Solution" value={newCaseStudy.solution} onChange={e => setNewCaseStudy({ ...newCaseStudy, solution: (e.target as HTMLTextAreaElement).value })} style={{ ...inputBase, width: '100%', minHeight: 60 }} />
+              <textarea rows={2} placeholder="Testimonial" value={newCaseStudy.testimonial} onChange={e => setNewCaseStudy({ ...newCaseStudy, testimonial: (e.target as HTMLTextAreaElement).value })} style={{ ...inputBase, width: '100%', minHeight: 60 }} />
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input placeholder="Testimonial Author" value={newCaseStudy.testimonialAuthor} onChange={e => setNewCaseStudy({ ...newCaseStudy, testimonialAuthor: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: 1 }} />
+                <input placeholder="Testimonial Role" value={newCaseStudy.testimonialRole} onChange={e => setNewCaseStudy({ ...newCaseStudy, testimonialRole: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: 1 }} />
+              </div>
+              <input placeholder="Image URL" value={newCaseStudy.image} onChange={e => setNewCaseStudy({ ...newCaseStudy, image: (e.target as HTMLInputElement).value })} style={{ ...inputBase, width: '100%' }} />
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input placeholder="Cost Saved" value={newCaseStudy.stats.costSaved} onChange={e => setNewCaseStudy({ ...newCaseStudy, stats: { ...newCaseStudy.stats, costSaved: (e.target as HTMLInputElement).value } })} style={{ ...inputBase, flex: 1 }} />
+                <input placeholder="Timeframe" value={newCaseStudy.stats.timeframe} onChange={e => setNewCaseStudy({ ...newCaseStudy, stats: { ...newCaseStudy.stats, timeframe: (e.target as HTMLInputElement).value } })} style={{ ...inputBase, flex: 1 }} />
+                <input placeholder="VA Count" value={newCaseStudy.stats.vaCount} onChange={e => setNewCaseStudy({ ...newCaseStudy, stats: { ...newCaseStudy.stats, vaCount: (e.target as HTMLInputElement).value } })} style={{ ...inputBase, flex: 1 }} />
+                <input type="number" placeholder="Order" value={newCaseStudy.order} onChange={e => setNewCaseStudy({ ...newCaseStudy, order: Number((e.target as HTMLInputElement).value) })} style={{ ...inputBase, width: 120 }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 12 }}>Results (JSON array)</label>
+                <textarea value={JSON.stringify(newCaseStudy.results || [], null, 2)} onChange={e => {
+                  try {
+                    const parsed = JSON.parse((e.target as HTMLTextAreaElement).value);
+                    setNewCaseStudy({ ...newCaseStudy, results: parsed });
+                  } catch {
+                    // Invalid JSON, don't update
+                  }
+                }} style={{ ...inputBase, width: '100%', minHeight: 150, fontFamily: 'monospace' }} />
+              </div>
             </div>
-            <input placeholder="Image URL" value={newCaseStudy.image} onChange={e => setNewCaseStudy({ ...newCaseStudy, image: e.target.value })} style={{ ...inputBase, width: '100%' }} />
-            <div style={{ display: 'flex', gap: 10 }}>
-              <input placeholder="Cost Saved" value={newCaseStudy.stats.costSaved} onChange={e => setNewCaseStudy({ ...newCaseStudy, stats: { ...newCaseStudy.stats, costSaved: e.target.value } })} style={{ ...inputBase, flex: 1 }} />
-              <input placeholder="Timeframe" value={newCaseStudy.stats.timeframe} onChange={e => setNewCaseStudy({ ...newCaseStudy, stats: { ...newCaseStudy.stats, timeframe: e.target.value } })} style={{ ...inputBase, flex: 1 }} />
-              <input placeholder="VA Count" value={newCaseStudy.stats.vaCount} onChange={e => setNewCaseStudy({ ...newCaseStudy, stats: { ...newCaseStudy.stats, vaCount: e.target.value } })} style={{ ...inputBase, flex: 1 }} />
-              <input type="number" placeholder="Order" value={newCaseStudy.order} onChange={e => setNewCaseStudy({ ...newCaseStudy, order: Number(e.target.value) })} style={{ ...inputBase, width: 120 }} />
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={prefillSample} style={{ ...btnSecondary }}>Prefill sample</button>
+              <button onClick={onAdd} disabled={newCaseStudy.caseStudyId < 1 || !hasToken} style={{ ...btnPrimary, opacity: newCaseStudy.caseStudyId >= 1 && hasToken ? 1 : 0.6 }}>Add Case Study</button>
             </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: 12 }}>Results (JSON array)</label>
-              <textarea value={JSON.stringify(newCaseStudy.results || [], null, 2)} onChange={e => {
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  setNewCaseStudy({ ...newCaseStudy, results: parsed });
-                } catch {
-                  // Invalid JSON, don't update
-                }
-              }} style={{ ...inputBase, width: '100%', minHeight: 150, fontFamily: 'monospace' }} />
-            </div>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <button onClick={onAdd} disabled={newCaseStudy.caseStudyId < 1 || !hasToken} style={{ ...btnPrimary, opacity: newCaseStudy.caseStudyId >= 1 && hasToken ? 1 : 0.6 }}>Add Case Study</button>
-            <button onClick={prefillSample} style={{ ...btnSecondary, marginLeft: 8 }}>Prefill sample</button>
           </div>
         </div>
-      </details>
+      )}
+
+      {/* Edit Case Study Modal */}
+      {editTarget && editingCaseStudy && (
+        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 50 }} onClick={() => { setEditTarget(null); setEditingCaseStudy(null); }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'relative', background: '#0b1220', border: '1px solid #1f2937', borderRadius: 14, padding: 16, maxWidth: 900, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>Edit Case Study (ID: {editTarget.caseStudyId})</h3>
+              <button onClick={() => { setEditTarget(null); setEditingCaseStudy(null); }} style={{ ...btnSecondary }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <input type="number" value={editingCaseStudy.caseStudyId} disabled style={{ ...inputBase, width: 140, color: '#9ca3af' }} />
+                <input placeholder="Title" value={editingCaseStudy.title} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, title: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+                <input placeholder="Company" value={editingCaseStudy.company} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, company: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 200px' }} />
+                <input placeholder="Industry" value={editingCaseStudy.industry} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, industry: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 200px' }} />
+              </div>
+              <textarea rows={2} placeholder="Challenge" value={editingCaseStudy.challenge} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, challenge: (e.target as HTMLTextAreaElement).value })} style={{ ...inputBase, width: '100%', minHeight: 60 }} />
+              <textarea rows={2} placeholder="Solution" value={editingCaseStudy.solution} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, solution: (e.target as HTMLTextAreaElement).value })} style={{ ...inputBase, width: '100%', minHeight: 60 }} />
+              <textarea rows={2} placeholder="Testimonial" value={editingCaseStudy.testimonial} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, testimonial: (e.target as HTMLTextAreaElement).value })} style={{ ...inputBase, width: '100%', minHeight: 60 }} />
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input placeholder="Testimonial Author" value={editingCaseStudy.testimonialAuthor} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, testimonialAuthor: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: 1 }} />
+                <input placeholder="Testimonial Role" value={editingCaseStudy.testimonialRole} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, testimonialRole: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: 1 }} />
+              </div>
+              <input placeholder="Image URL" value={editingCaseStudy.image} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, image: (e.target as HTMLInputElement).value })} style={{ ...inputBase, width: '100%' }} />
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input placeholder="Cost Saved" value={editingCaseStudy.stats.costSaved} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, stats: { ...editingCaseStudy.stats, costSaved: (e.target as HTMLInputElement).value } })} style={{ ...inputBase, flex: 1 }} />
+                <input placeholder="Timeframe" value={editingCaseStudy.stats.timeframe} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, stats: { ...editingCaseStudy.stats, timeframe: (e.target as HTMLInputElement).value } })} style={{ ...inputBase, flex: 1 }} />
+                <input placeholder="VA Count" value={editingCaseStudy.stats.vaCount} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, stats: { ...editingCaseStudy.stats, vaCount: (e.target as HTMLInputElement).value } })} style={{ ...inputBase, flex: 1 }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 12 }}>Results (JSON array)</label>
+                <textarea value={JSON.stringify(editingCaseStudy.results || [], null, 2)} onChange={e => {
+                  try {
+                    const parsed = JSON.parse((e.target as HTMLTextAreaElement).value);
+                    setEditingCaseStudy({ ...editingCaseStudy, results: parsed });
+                  } catch {
+                    // Invalid JSON, don't update
+                  }
+                }} style={{ ...inputBase, width: '100%', minHeight: 150, fontFamily: 'monospace' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 12 }}>Order</label>
+                <input type="number" value={editingCaseStudy.order} onChange={e => setEditingCaseStudy({ ...editingCaseStudy, order: Number((e.target as HTMLInputElement).value) })} style={{ ...inputBase, width: 120 }} />
+              </div>
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => { setEditTarget(null); setEditingCaseStudy(null); }} style={btnSecondary}>Cancel</button>
+              <button onClick={() => { if (editingCaseStudy) void onSave(editingCaseStudy); setEditTarget(null); setEditingCaseStudy(null); }} disabled={!hasToken} style={btnPrimary}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
       {toast && (
         <div style={{ position: 'fixed', right: 16, bottom: 16, background: toast.type==='success' ? '#062e24' : '#3f1d1d', color: toast.type==='success' ? '#10b981' : '#f87171', border: '1px solid #1f2937', borderRadius: 10, padding: '10px 14px', fontWeight: 600 }}>
           {toast.message}

@@ -42,6 +42,8 @@ export default function AdminFooter() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingFooter, setEditingFooter] = useState<Footer | null>(null);
 
   const pushToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ type, message });
@@ -118,6 +120,45 @@ export default function AdminFooter() {
     const newLinks = [...footer.socialLinks];
     newLinks[idx] = { ...newLinks[idx], [key]: value };
     setFooter({ ...footer, socialLinks: newLinks });
+  };
+
+  // Modal helpers for working copy editing
+  const openEditModal = () => {
+    if (!footer) return;
+    setEditingFooter(JSON.parse(JSON.stringify(footer)) as Footer);
+    setEditOpen(true);
+  };
+  const applyEditModal = () => {
+    if (editingFooter) setFooter(editingFooter);
+    setEditOpen(false);
+  };
+  const addEditingLink = () => {
+    if (!editingFooter) return;
+    setEditingFooter({ ...editingFooter, links: [...(editingFooter.links || []), { label: '', url: '' }] });
+  };
+  const setEditingLinkField = (idx: number, key: string, value: string) => {
+    if (!editingFooter) return;
+    const links = [...(editingFooter.links || [])];
+    links[idx] = { ...links[idx], [key]: value };
+    setEditingFooter({ ...editingFooter, links });
+  };
+  const removeEditingLink = (idx: number) => {
+    if (!editingFooter) return;
+    setEditingFooter({ ...editingFooter, links: editingFooter.links.filter((_, i) => i !== idx) });
+  };
+  const addEditingSocial = () => {
+    if (!editingFooter) return;
+    setEditingFooter({ ...editingFooter, socialLinks: [...(editingFooter.socialLinks || []), { platform: '', url: '', icon: '' }] });
+  };
+  const setEditingSocialField = (idx: number, key: string, value: string) => {
+    if (!editingFooter) return;
+    const arr = [...(editingFooter.socialLinks || [])];
+    arr[idx] = { ...arr[idx], [key]: value };
+    setEditingFooter({ ...editingFooter, socialLinks: arr });
+  };
+  const removeEditingSocial = (idx: number) => {
+    if (!editingFooter) return;
+    setEditingFooter({ ...editingFooter, socialLinks: editingFooter.socialLinks.filter((_, i) => i !== idx) });
   };
 
   const addLink = () => {

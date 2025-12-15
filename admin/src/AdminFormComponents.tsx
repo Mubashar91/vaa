@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 import { ReactNode } from 'react';
 
 /**
@@ -16,7 +16,7 @@ interface SectionCardProps {
 }
 
 export const SectionCard = ({ title, isOpen, onToggle, children, icon: Icon, description }: SectionCardProps) => (
-  <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-xl hover:border-gold/30 transition-all duration-300">
+  <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-5 shadow-xl hover:border-gold/30 transition-all duration-300">
     <button
       onClick={onToggle}
       className="w-full flex items-center justify-between mb-4 group"
@@ -35,7 +35,7 @@ export const SectionCard = ({ title, isOpen, onToggle, children, icon: Icon, des
         <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-gold transition-colors" />
       )}
     </button>
-    {isOpen && <div className="space-y-4">{children}</div>}
+    {isOpen && <div className="space-y-3.5">{children}</div>}
   </div>
 );
 
@@ -72,7 +72,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export const AdminInput = ({ error, className = '', ...props }: InputProps) => (
   <input
-    className={`w-full px-4 py-3 bg-slate-900/60 border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all ${
+    className={`w-full px-3.5 py-2.5 bg-slate-900/60 border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all ${
       error
         ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50'
         : 'border-slate-700/60 focus:ring-gold/50 focus:border-gold/50'
@@ -87,7 +87,7 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 
 export const AdminTextarea = ({ error, className = '', ...props }: TextareaProps) => (
   <textarea
-    className={`w-full px-4 py-3 bg-slate-900/60 border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all resize-y min-h-[80px] ${
+    className={`w-full px-3.5 py-2.5 bg-slate-900/60 border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all resize-y min-h-[72px] ${
       error
         ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50'
         : 'border-slate-700/60 focus:ring-gold/50 focus:border-gold/50'
@@ -102,7 +102,7 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 
 export const AdminSelect = ({ error, className = '', children, ...props }: SelectProps) => (
   <select
-    className={`w-full px-4 py-3 bg-slate-900/60 border rounded-xl text-white focus:outline-none focus:ring-2 transition-all ${
+    className={`w-full px-3.5 py-2.5 bg-slate-900/60 border rounded-xl text-white focus:outline-none focus:ring-2 transition-all ${
       error
         ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50'
         : 'border-slate-700/60 focus:ring-gold/50 focus:border-gold/50'
@@ -139,10 +139,17 @@ interface ActionButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   loading?: boolean;
   icon?: React.ElementType;
+  size?: 'sm' | 'md' | 'lg';
 }
 
-export const ActionButton = ({ variant = 'primary', loading, icon: Icon, children, className = '', disabled, ...props }: ActionButtonProps) => {
-  const baseStyles = 'flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:cursor-not-allowed';
+export const ActionButton = ({ variant = 'primary', loading, icon: Icon, size = 'md', children, className = '', disabled, ...props }: ActionButtonProps) => {
+  const sizeStyles = {
+    sm: 'px-2.5 py-1.5 text-xs gap-1.5 rounded-lg',
+    md: 'px-4 py-2 text-sm gap-2 rounded-xl',
+    lg: 'px-5 py-2.5 text-base gap-2 rounded-xl',
+  };
+  
+  const baseStyles = `flex items-center font-semibold transition-all disabled:cursor-not-allowed ${sizeStyles[size]}`;
   
   const variants = {
     primary: 'bg-gradient-to-r from-gold to-yellow-500 hover:from-gold/90 hover:to-yellow-500/90 text-slate-900 shadow-lg shadow-gold/20 hover:shadow-gold/30 disabled:bg-slate-700/30 disabled:text-slate-600 disabled:shadow-none',
@@ -167,7 +174,7 @@ export const ActionButton = ({ variant = 'primary', loading, icon: Icon, childre
         </>
       ) : (
         <>
-          {Icon && <Icon className="w-4 h-4" />}
+          {Icon && <Icon className={size === 'sm' ? 'w-3.5 h-3.5' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4'} />}
           {children}
         </>
       )}
@@ -223,7 +230,7 @@ interface PageHeaderProps {
 }
 
 export const PageHeader = ({ title, description, icon: Icon, status }: PageHeaderProps) => (
-  <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 mb-6 shadow-xl">
+  <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-5 mb-5 shadow-xl">
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="flex-1">
         <div className="flex items-center gap-3 mb-2">
@@ -246,8 +253,8 @@ interface ControlsBarProps {
 }
 
 export const ControlsBar = ({ children }: ControlsBarProps) => (
-  <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 mb-6 shadow-xl">
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-3.5 mb-5 shadow-xl">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5">
       {children}
     </div>
   </div>
@@ -264,8 +271,8 @@ interface StickyActionBarProps {
 }
 
 export const StickyActionBar = ({ isDirty, onRevert, onSave, saving = false, hasToken = true, hasErrors = false, canSave = true }: StickyActionBarProps) => (
-  <div className="sticky bottom-0 mt-6 bg-gradient-to-br from-slate-900/95 to-slate-950/95 backdrop-blur-xl border-t border-slate-700/60 rounded-t-2xl p-4 shadow-2xl">
-    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+  <div className="sticky bottom-0 mt-5 bg-gradient-to-br from-slate-900/95 to-slate-950/95 backdrop-blur-xl border-t border-slate-700/60 rounded-t-2xl p-3.5 shadow-2xl">
+    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3.5">
       {isDirty && (
         <div className="flex items-center gap-2 text-yellow-400 text-sm font-semibold">
           <AlertCircle className="w-4 h-4" />
@@ -292,6 +299,88 @@ export const StickyActionBar = ({ isDirty, onRevert, onSave, saving = false, has
         </ActionButton>
       </div>
     </div>
+  </div>
+);
+
+interface AddFormCardProps {
+  title: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+  icon?: React.ElementType;
+  description?: string;
+  onAdd?: () => void;
+  onPrefill?: () => void;
+  canAdd?: boolean;
+  adding?: boolean;
+}
+
+export const AddFormCard = ({ 
+  title, 
+  isOpen, 
+  onToggle, 
+  children, 
+  icon: Icon, 
+  description,
+  onAdd,
+  onPrefill,
+  canAdd = true,
+  adding = false
+}: AddFormCardProps) => (
+  <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl shadow-xl hover:border-gold/30 transition-all duration-300 overflow-hidden">
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center justify-between p-6 group"
+      type="button"
+    >
+      <div className="flex items-center gap-3">
+        {Icon && (
+          <div className="p-2 bg-gold/20 rounded-lg border border-gold/30 group-hover:bg-gold/30 transition-colors">
+            <Icon className="w-5 h-5 text-gold" />
+          </div>
+        )}
+        <div className="text-left">
+          <h3 className="text-lg font-bold text-white group-hover:text-gold transition-colors">{title}</h3>
+          {description && <p className="text-xs text-slate-400 mt-0.5">{description}</p>}
+        </div>
+      </div>
+      {isOpen ? (
+        <ChevronUp className="w-5 h-5 text-slate-400 group-hover:text-gold transition-colors" />
+      ) : (
+        <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-gold transition-colors" />
+      )}
+    </button>
+    {isOpen && (
+      <div className="px-6 pb-6 border-t border-slate-700/60 pt-6">
+        <div className="space-y-4 mb-6">
+          {children}
+        </div>
+        {(onAdd || onPrefill) && (
+          <div className="flex items-center gap-3 pt-4 border-t border-slate-700/60">
+            {onAdd && (
+              <ActionButton
+                variant="primary"
+                onClick={onAdd}
+                disabled={!canAdd}
+                loading={adding}
+                icon={Plus}
+              >
+                Add Item
+              </ActionButton>
+            )}
+            {onPrefill && (
+              <ActionButton
+                variant="secondary"
+                onClick={onPrefill}
+                icon={CheckCircle2}
+              >
+                Prefill Sample
+              </ActionButton>
+            )}
+          </div>
+        )}
+      </div>
+    )}
   </div>
 );
 

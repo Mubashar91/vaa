@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { 
   DollarSign, Search, RefreshCw, Plus, X, Save, Trash2, 
-  CheckCircle2, AlertCircle, Loader2, Globe, Shield, FileText, Download
+  CheckCircle2, AlertCircle, Loader2, Globe, Shield, FileText
 } from 'lucide-react';
-import { Toast, StatusBadge, ActionButton, PageHeader, ControlsBar } from './AdminFormComponents';
+import { Toast, StatusBadge, ActionButton, PageHeader, ControlsBar, AdminInput, AdminSelect, FormField, AddFormCard } from './AdminFormComponents';
 
 type Lang = 'en' | 'de';
 
@@ -43,16 +43,49 @@ export default function AdminPricing() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [createJson, setCreateJson] = useState<string | null>(null);
-  const [importJson, setImportJson] = useState<string>('');
+  // Add-form feature input
+  const [featureInput, setFeatureInput] = useState<string>('');
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
+  // Removed inline AddFormCard; using modal-only flow
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const [hoverRow, setHoverRow] = useState<number | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Plan | null>(null);
   const [editTarget, setEditTarget] = useState<Plan | null>(null);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  // Edit modal feature input
+  const [editFeatureInput, setEditFeatureInput] = useState<string>('');
   const [query, setQuery] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Quick price edit modal state
+  const [quickEditTarget, setQuickEditTarget] = useState<Plan | null>(null);
+  const [quickPriceValue, setQuickPriceValue] = useState<string>('');
+  const [quickSaving, setQuickSaving] = useState(false);
+
+  const openQuickPriceEdit = (p: Plan) => {
+    setQuickEditTarget(p);
+    setQuickPriceValue(String(p.price.toFixed(2)));
+  };
+
+  const saveQuickPrice = async () => {
+    if (!quickEditTarget) return;
+    const v = Number(quickPriceValue);
+    if (isNaN(v) || v < 0) { pushToast('Price must be a non-negative number', 'error'); return; }
+    if (!hasToken) { pushToast('Admin token required', 'error'); return; }
+    const url = `${API_BASE}/api/admin/pricing/${quickEditTarget.planKey}`;
+    setQuickSaving(true);
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...headers() },
+      body: JSON.stringify({ lang, updates: { price: v } }),
+    });
+    if (!res.ok) { await logHttpError(res, `PUT ${url}`); setQuickSaving(false); return pushToast('Save failed: ' + res.status, 'error'); }
+    await load();
+    pushToast('Price updated');
+    setQuickSaving(false);
+    setQuickEditTarget(null);
+  };
 
   const pushToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ type, message });
@@ -102,6 +135,22 @@ export default function AdminPricing() {
     if (hasToken) load();
   }, [hasToken, lang, load]);
 
+  // Close modals on ESC for better accessibility
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (addModalOpen) setAddModalOpen(false);
+        if (editTarget) handleCancelEdit();
+        if (deleteTarget) setDeleteTarget(null);
+        if (quickEditTarget) setQuickEditTarget(null);
+      }
+    };
+    if (addModalOpen || editTarget) {
+      document.addEventListener('keydown', onKey);
+      return () => document.removeEventListener('keydown', onKey);
+    }
+  }, [addModalOpen, editTarget]);
+
   // Edit helpers
   const handleEditClick = (plan: Plan) => {
     setEditTarget(plan);
@@ -148,28 +197,20 @@ export default function AdminPricing() {
     setEditingPlan(null);
   };
 
-  const importFromJson = () => {
-    try {
-      const parsed = JSON.parse(importJson || '{}');
-      const p = parsed.plan || parsed;
-      const l = parsed.lang as Lang | undefined;
-      if (l === 'en' || l === 'de') setLang(l);
-      if (!p || typeof p !== 'object') throw new Error('Invalid payload: missing plan');
-      const next: Plan = {
-        planKey: String(p.planKey || '').trim(),
-        name: String(p.name || ''),
-        hours: String(p.hours || ''),
-        price: typeof p.price === 'number' ? p.price : Number(p.price || 0),
-        setupFee: typeof p.setupFee === 'number' ? p.setupFee : Number(p.setupFee || 0),
-        badge: p.badge ? String(p.badge) : '',
-        features: Array.isArray(p.features) ? p.features.map((x: unknown) => String(x)) : [],
-        highlighted: Boolean(p.highlighted),
-      };
-      setNewPlan(next);
-      pushToast('Plan imported successfully');
-    } catch {
-      pushToast('Invalid JSON. Please check the structure.', 'error');
-    }
+  // Feature chip helpers (Add Form)
+  const addFeature = () => {
+    const v = featureInput.trim();
+    if (!v) return;
+    const current = newPlan.features || [];
+    if (current.includes(v)) { setFeatureInput(''); return; }
+    setNewPlan({ ...newPlan, features: [...current, v] });
+    setFeatureInput('');
+  };
+
+  const removeFeature = (idx: number) => {
+    const arr = (newPlan.features || []).slice();
+    arr.splice(idx, 1);
+    setNewPlan({ ...newPlan, features: arr });
   };
 
   const validateCore = (p: Pick<Plan, 'name'|'hours'|'price'|'setupFee'>) => {
@@ -183,7 +224,8 @@ export default function AdminPricing() {
   const logHttpError = async (res: Response, context: string) => {
     let body = '';
     try { body = await res.clone().text(); } catch { /* ignore */ }
-    if (import.meta.env.DEV) {
+    const __ENV = ((import.meta as unknown) as { env?: Record<string, any> }).env || {};
+    if (__ENV && __ENV.DEV) {
       console.error('[AdminPricing] request failed', {
         context,
         url: res.url,
@@ -248,21 +290,138 @@ export default function AdminPricing() {
       await logHttpError(res, `POST ${url}`);
       return pushToast('Add failed: ' + res.status, 'error');
     }
-    try { const data = await res.json(); setCreateJson(JSON.stringify(data, null, 2)); } catch { setCreateJson(null); }
+    // Response body not shown; simplifying UI
     setNewPlan({ planKey: '', name: '', hours: '', price: 0, setupFee: 0, badge: '', features: [], highlighted: false });
     await load();
     pushToast('Plan added successfully');
-    setAddOpen(false);
+    setAddModalOpen(false);
   };
 
+  // Debounce search input to reduce re-renders
+  useEffect(() => {
+    const h = window.setTimeout(() => {
+      setSearchTerm(query.trim().toLowerCase());
+    }, 200);
+    return () => window.clearTimeout(h);
+  }, [query]);
+
   const filteredPlans = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = searchTerm;
     if (!q) return plans;
     return plans.filter(p => 
       [p.planKey, p.name, p.hours, String(p.price), String(p.setupFee), p.badge || '', ...(p.features||[])]
         .join(' ').toLowerCase().includes(q)
     );
-  }, [plans, query]);
+  }, [plans, searchTerm]);
+
+  // Currency formatter helper for previews
+  const fmtCurrency = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number.isFinite(n) ? n : 0);
+
+  // Shared Add Form fields renderer (used in card and modal)
+  const renderAddFormFields = (options?: { autoFocus?: boolean }) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <FormField label="Plan Key" required>
+        <AdminSelect
+          value={newPlan.planKey}
+          onChange={e => setNewPlan({ ...newPlan, planKey: (e.target as HTMLSelectElement).value })}
+        >
+          <option value="">Select planKey</option>
+          {['starter','professional','enterprise'].map(k => (
+            <option key={k} value={k} disabled={plans.some(p => p.planKey === k)}>
+              {k}{plans.some(p => p.planKey === k) ? ' (added)' : ''}
+            </option>
+          ))}
+        </AdminSelect>
+      </FormField>
+      <FormField label="Name" required>
+        <AdminInput
+          type="text"
+          placeholder="Plan name"
+          value={newPlan.name}
+          onChange={e => setNewPlan({ ...newPlan, name: e.target.value })}
+          autoFocus={Boolean(options?.autoFocus)}
+        />
+      </FormField>
+      <FormField label="Hours" required>
+        <AdminInput
+          type="text"
+          placeholder="e.g. 10h/week"
+          value={newPlan.hours}
+          onChange={e => setNewPlan({ ...newPlan, hours: e.target.value })}
+        />
+      </FormField>
+      <FormField label="Price" required>
+        <AdminInput
+          type="number"
+          placeholder="0.00"
+          min={0}
+          step={0.01}
+          value={newPlan.price}
+          onChange={e => setNewPlan({ ...newPlan, price: Number((e.target as HTMLInputElement).value) })}
+          className="font-mono"
+        />
+        <div className="text-xs text-slate-400 mt-1">{fmtCurrency(newPlan.price || 0)}</div>
+      </FormField>
+      <FormField label="Setup Fee" required>
+        <AdminInput
+          type="number"
+          placeholder="0.00"
+          min={0}
+          step={0.01}
+          value={newPlan.setupFee}
+          onChange={e => setNewPlan({ ...newPlan, setupFee: Number((e.target as HTMLInputElement).value) })}
+          className="font-mono"
+        />
+        <div className="text-xs text-slate-400 mt-1">{fmtCurrency(newPlan.setupFee || 0)}</div>
+      </FormField>
+      <FormField label="Badge (Optional)">
+        <AdminInput
+          type="text"
+          placeholder="e.g. Best Value"
+          value={newPlan.badge || ''}
+          onChange={e => setNewPlan({ ...newPlan, badge: e.target.value })}
+        />
+      </FormField>
+      <div className="md:col-span-2 lg:col-span-3">
+        <FormField label="Features" required>
+          <div className="flex items-center gap-3">
+            <AdminInput
+              type="text"
+              placeholder="Type a feature and press Enter"
+              value={featureInput}
+              onChange={e => setFeatureInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFeature(); } }}
+              className="text-sm"
+            />
+            <ActionButton variant="secondary" onClick={addFeature} icon={Plus}>
+              Add
+            </ActionButton>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(newPlan.features || []).map((f, i) => (
+              <span key={i} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-600/60 bg-slate-700/40 text-slate-200 text-sm max-w-[220px]">
+                <span className="truncate">{f}</span>
+                <button type="button" onClick={() => removeFeature(i)} className="hover:text-red-300 transition-colors" title="Remove feature">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        </FormField>
+      </div>
+      <FormField label="Highlighted">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={newPlan.highlighted}
+            onChange={e => setNewPlan({ ...newPlan, highlighted: e.target.checked })}
+            className="w-5 h-5 rounded border-slate-700/60 bg-slate-900/60 text-gold focus:ring-2 focus:ring-gold/50 cursor-pointer"
+          />
+          <span className="text-sm font-semibold text-slate-300">Highlighted</span>
+        </label>
+      </FormField>
+    </div>
+  );
 
   return (
     <div className="w-full py-6">
@@ -276,20 +435,19 @@ export default function AdminPricing() {
           </StatusBadge>
         }
       />
-
       <ControlsBar>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
           <div className="flex items-center gap-4">
             <label className="flex flex-col gap-2">
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Language</span>
-              <select
+              <AdminSelect
                 value={lang}
-                onChange={e => setLang(e.target.value as Lang)}
-                className="px-4 py-2.5 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all font-semibold cursor-pointer"
+                onChange={e => setLang((e.target as HTMLSelectElement).value as Lang)}
+                className="font-semibold cursor-pointer"
               >
                 <option value="en">🇬🇧 English</option>
                 <option value="de">🇩🇪 Deutsch</option>
-              </select>
+              </AdminSelect>
             </label>
             {loading && (
               <div className="flex items-center gap-2 text-slate-400">
@@ -304,12 +462,8 @@ export default function AdminPricing() {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3 ml-auto">
-            <ActionButton
-              variant="secondary"
-              onClick={load}
-              icon={RefreshCw}
-            >
+          <div className="flex items-center gap-3 sm:ml-auto">
+            <ActionButton variant="secondary" onClick={load} icon={RefreshCw}>
               Refresh
             </ActionButton>
             <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/40 rounded-lg border border-slate-700/50">
@@ -324,6 +478,8 @@ export default function AdminPricing() {
           </div>
         </div>
       </ControlsBar>
+
+      {/* Inline AddFormCard removed; use modal via actions bar */}
 
       {/* Stats and Actions Bar */}
       <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 mb-6 shadow-xl">
@@ -347,12 +503,12 @@ export default function AdminPricing() {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
+              <AdminInput
                 type="text"
                 placeholder="Search plans…"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                className="pl-11 pr-4 py-2.5 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all w-64"
+                className="pl-11 w-64"
               />
             </div>
             <ActionButton
@@ -363,11 +519,11 @@ export default function AdminPricing() {
               Refresh
             </ActionButton>
             <ActionButton
-              variant="primary"
-              onClick={() => setAddOpen(!addOpen)}
-              icon={addOpen ? X : Plus}
+              variant="secondary"
+              onClick={() => setAddModalOpen(true)}
+              icon={Plus}
             >
-              {addOpen ? 'Hide Form' : 'Add New Plan'}
+              Open Add Plan Modal
             </ActionButton>
           </div>
         </div>
@@ -425,18 +581,32 @@ export default function AdminPricing() {
                       <span className="text-sm text-slate-300">{p.hours}</span>
                     </td>
                     <td className="px-4 py-3 border-t border-slate-700/30 text-right">
-                      <span className="text-sm text-white font-mono">{p.price.toFixed(2)}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openQuickPriceEdit(p); }}
+                        className="text-sm text-white font-mono underline decoration-dotted hover:text-gold"
+                        title="Click to quick edit price"
+                      >
+                        {fmtCurrency(p.price)}
+                      </button>
                     </td>
                     <td className="px-4 py-3 border-t border-slate-700/30 text-right">
-                      <span className="text-sm text-white font-mono">{p.setupFee.toFixed(2)}</span>
+                      <span className="text-sm text-white font-mono">{fmtCurrency(p.setupFee)}</span>
                     </td>
                     <td className="px-4 py-3 border-t border-slate-700/30">
                       <span className="text-sm text-slate-300">{p.badge || '-'}</span>
                     </td>
                     <td className="px-4 py-3 border-t border-slate-700/30 min-w-[260px]">
-                      <span className="text-sm text-slate-300 line-clamp-2">
-                        {(p.features||[]).join(', ')}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {(p.features || []).map((f, i) => (
+                          <span key={i} title={f} className="px-2 py-0.5 rounded-full border border-slate-600/60 bg-slate-700/40 text-slate-200 text-xs max-w-[200px]">
+                            <span className="truncate inline-block align-middle">{f}</span>
+                          </span>
+                        ))}
+                        {(!p.features || p.features.length === 0) && (
+                          <span className="text-slate-500 text-sm">-</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 border-t border-slate-700/30 text-center">
                       {p.highlighted ? (
@@ -482,165 +652,18 @@ export default function AdminPricing() {
         </div>
       </div>
 
-      {/* Add New Plan Form */}
-      {addOpen && (
-        <div className="mt-6 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-gold/20 rounded-lg border border-gold/30">
-              <Plus className="w-5 h-5 text-gold" />
-            </div>
-            <h3 className="text-xl font-bold text-white">Create New Pricing Plan</h3>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Plan Key *</label>
-              <select
-                value={newPlan.planKey}
-                onChange={e => setNewPlan({ ...newPlan, planKey: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-              >
-                <option value="">Select planKey</option>
-                {['starter','professional','enterprise'].map(k => (
-                  <option key={k} value={k} disabled={plans.some(p => p.planKey === k)}>
-                    {k}{plans.some(p => p.planKey === k) ? ' (added)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Name *</label>
-              <input
-                type="text"
-                placeholder="Plan name"
-                value={newPlan.name}
-                onChange={e => setNewPlan({ ...newPlan, name: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Hours *</label>
-              <input
-                type="text"
-                placeholder="e.g. 10h/week"
-                value={newPlan.hours}
-                onChange={e => setNewPlan({ ...newPlan, hours: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Price *</label>
-              <input
-                type="number"
-                placeholder="0.00"
-                min={0}
-                step={0.01}
-                value={newPlan.price}
-                onChange={e => setNewPlan({ ...newPlan, price: Number(e.target.value) })}
-                className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Setup Fee *</label>
-              <input
-                type="number"
-                placeholder="0.00"
-                min={0}
-                step={0.01}
-                value={newPlan.setupFee}
-                onChange={e => setNewPlan({ ...newPlan, setupFee: Number(e.target.value) })}
-                className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Badge (Optional)</label>
-              <input
-                type="text"
-                placeholder="e.g. Best Value"
-                value={newPlan.badge || ''}
-                onChange={e => setNewPlan({ ...newPlan, badge: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-              />
-            </div>
-            <div className="md:col-span-2 lg:col-span-3">
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Features (one per line) *</label>
-              <textarea
-                rows={4}
-                placeholder="Feature 1&#10;Feature 2&#10;Feature 3"
-                value={(newPlan.features||[]).join('\n')}
-                onChange={e => setNewPlan({ ...newPlan, features: e.target.value.split('\n').map(s=>s.trim()).filter(Boolean) })}
-                className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all resize-y font-mono text-sm"
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={newPlan.highlighted}
-                  onChange={e => setNewPlan({ ...newPlan, highlighted: e.target.checked })}
-                  className="w-5 h-5 rounded border-slate-700/60 bg-slate-900/60 text-gold focus:ring-2 focus:ring-gold/50 cursor-pointer"
-                />
-                <span className="text-sm font-semibold text-slate-300">Highlighted</span>
-              </label>
-            </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            <ActionButton
-              variant="primary"
-              onClick={onAdd}
-              disabled={!newPlan.planKey || !hasToken}
-              icon={CheckCircle2}
-            >
-              Add Plan
-            </ActionButton>
-            <ActionButton
-              variant="secondary"
-              onClick={prefillSample}
-              icon={FileText}
-            >
-              Prefill Sample
-            </ActionButton>
-            <ActionButton
-              variant="secondary"
-              onClick={importFromJson}
-              icon={Download}
-              disabled={!importJson.trim()}
-            >
-              Import JSON
-            </ActionButton>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-2">Import from JSON (optional)</label>
-            <textarea
-              placeholder='Paste JSON body here (optionally { "lang": "en", "plan": { ... } })'
-              value={importJson}
-              onChange={e => setImportJson(e.target.value)}
-              rows={4}
-              className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all resize-y font-mono text-sm"
-            />
-          </div>
-
-          {createJson && (
-            <div className="mt-4 p-4 bg-slate-950 border border-slate-800 rounded-xl">
-              <div className="font-bold text-slate-300 mb-2">Server Response</div>
-              <pre className="text-xs text-slate-400 whitespace-pre-wrap font-mono">{createJson}</pre>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Edit Plan Modal */}
       {editTarget && editingPlan && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={handleCancelEdit}>
-          <div className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-200" onClick={handleCancelEdit}>
+          <div role="dialog" aria-modal="true" aria-labelledby="edit-plan-modal-title" className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl transition-transform duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gold/20 rounded-lg border border-gold/30">
                   <DollarSign className="w-5 h-5 text-gold" />
                 </div>
-                <h3 className="text-xl font-bold text-white">Edit Plan: {editTarget.planKey}</h3>
+                <h3 id="edit-plan-modal-title" className="text-xl font-bold text-white">Edit Plan: {editTarget.planKey}</h3>
               </div>
               <button
                 onClick={handleCancelEdit}
@@ -653,76 +676,89 @@ export default function AdminPricing() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-semibold text-slate-300 mb-2">Plan Key</label>
-                <input
+                <AdminInput
                   type="text"
                   value={editTarget.planKey}
                   disabled
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-slate-500 cursor-not-allowed font-mono"
+                  className="text-slate-500 cursor-not-allowed font-mono"
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-300 mb-2">Name *</label>
-                <input
+                <AdminInput
                   type="text"
                   placeholder="Plan name"
                   value={editingPlan.name}
-                  onChange={e => handleEditField('name', e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
+                  onChange={e => handleEditField('name', (e.target as HTMLInputElement).value)}
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-300 mb-2">Hours *</label>
-                <input
+                <AdminInput
                   type="text"
                   placeholder="e.g. 10h/week"
                   value={editingPlan.hours}
-                  onChange={e => handleEditField('hours', e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
+                  onChange={e => handleEditField('hours', (e.target as HTMLInputElement).value)}
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-300 mb-2">Price *</label>
-                <input
+                <AdminInput
                   type="number"
                   placeholder="0.00"
                   min={0}
                   step={0.01}
                   value={editingPlan.price}
-                  onChange={e => handleEditField('price', Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all font-mono"
+                  onChange={e => handleEditField('price', Number((e.target as HTMLInputElement).value))}
+                  className="font-mono"
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-300 mb-2">Setup Fee *</label>
-                <input
+                <AdminInput
                   type="number"
                   placeholder="0.00"
                   min={0}
                   step={0.01}
                   value={editingPlan.setupFee}
-                  onChange={e => handleEditField('setupFee', Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all font-mono"
+                  onChange={e => handleEditField('setupFee', Number((e.target as HTMLInputElement).value))}
+                  className="font-mono"
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-300 mb-2">Badge (Optional)</label>
-                <input
+                <AdminInput
                   type="text"
                   placeholder="e.g. Best Value"
                   value={editingPlan.badge || ''}
-                  onChange={e => handleEditField('badge', e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
+                  onChange={e => handleEditField('badge', (e.target as HTMLInputElement).value)}
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-300 mb-2">Features (one per line) *</label>
-                <textarea
-                  rows={6}
-                  placeholder="Feature 1&#10;Feature 2&#10;Feature 3"
-                  value={(editingPlan.features||[]).join('\n')}
-                  onChange={e => handleEditField('features', e.target.value.split('\n').map(s=>s.trim()).filter(Boolean))}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all resize-y font-mono text-sm"
-                />
+                <label className="block text-sm font-semibold text-slate-300 mb-2">Features *</label>
+                <div className="flex items-center gap-3">
+                  <AdminInput
+                    type="text"
+                    placeholder="Type a feature and press Enter"
+                    value={editFeatureInput}
+                    onChange={e => setEditFeatureInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addEditFeature(); } }}
+                    className="text-sm"
+                  />
+                  <ActionButton variant="secondary" onClick={addEditFeature} icon={Plus}>
+                    Add
+                  </ActionButton>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(editingPlan.features || []).map((f, i) => (
+                    <span key={i} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-600/60 bg-slate-700/40 text-slate-200 text-sm max-w-[220px]">
+                      <span className="truncate">{f}</span>
+                      <button type="button" onClick={() => removeEditFeature(i)} className="hover:text-red-300 transition-colors">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-3 cursor-pointer">
@@ -759,15 +795,101 @@ export default function AdminPricing() {
         </div>
       )}
 
+      {/* Quick Price Edit Modal */}
+      {quickEditTarget && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-200" onClick={() => setQuickEditTarget(null)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="quick-price-modal-title" className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 max-w-md w-full shadow-2xl transition-transform duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gold/20 rounded-lg border border-gold/30">
+                  <DollarSign className="w-5 h-5 text-gold" />
+                </div>
+                <h3 id="quick-price-modal-title" className="text-lg font-bold text-white">Quick Edit Price: {quickEditTarget.planKey}</h3>
+              </div>
+              <button
+                onClick={() => setQuickEditTarget(null)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <label className="block text-sm font-semibold text-slate-300 mb-2">New Price *</label>
+            <AdminInput
+              type="number"
+              placeholder="0.00"
+              min={0}
+              step={0.01}
+              value={quickPriceValue}
+              onChange={e => setQuickPriceValue((e.target as HTMLInputElement).value)}
+              className="font-mono"
+            />
+            <div className="text-xs text-slate-400 mt-1">{fmtCurrency(Number(quickPriceValue) || 0)}</div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <ActionButton variant="secondary" onClick={() => setQuickEditTarget(null)} icon={X}>
+                Cancel
+              </ActionButton>
+              <ActionButton variant="primary" onClick={saveQuickPrice} loading={quickSaving} icon={Save}>
+                Save Price
+              </ActionButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Plan Modal */}
+      {addModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-200" onClick={() => setAddModalOpen(false)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="add-plan-modal-title" className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl transition-transform duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gold/20 rounded-lg border border-gold/30">
+                  <Plus className="w-5 h-5 text-gold" />
+                </div>
+                <h3 id="add-plan-modal-title" className="text-xl font-bold text-white">Create New Pricing Plan</h3>
+              </div>
+              <button
+                onClick={() => setAddModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {renderAddFormFields({ autoFocus: true })}
+
+            <div className="flex items-center gap-3 pt-6">
+              <ActionButton
+                variant="primary"
+                onClick={onAdd}
+                disabled={!newPlan.planKey || !hasToken}
+                icon={CheckCircle2}
+              >
+                Add Plan
+              </ActionButton>
+              <ActionButton variant="secondary" onClick={prefillSample} icon={FileText}>
+                Prefill Sample
+              </ActionButton>
+              <ActionButton variant="ghost" onClick={() => setAddModalOpen(false)}>
+                Close
+              </ActionButton>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-200" onClick={() => setDeleteTarget(null)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="delete-plan-modal-title" className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 max-w-md w-full shadow-2xl transition-transform duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-red-500/20 rounded-lg border border-red-500/30">
                 <Trash2 className="w-5 h-5 text-red-400" />
               </div>
-              <h3 className="text-xl font-bold text-white">Delete Plan</h3>
+              <h3 id="delete-plan-modal-title" className="text-xl font-bold text-white">Delete Plan</h3>
             </div>
             <p className="text-slate-300 mb-6 leading-relaxed">
               Are you sure you want to delete plan <strong className="text-red-400">"{deleteTarget.planKey}"</strong>? 

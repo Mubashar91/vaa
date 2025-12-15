@@ -45,6 +45,9 @@ export default function AdminHero() {
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [dirtyGuard, setDirtyGuard] = useState(false);
+  // Modal-based edit UX
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingHero, setEditingHero] = useState<Hero | null>(null);
 
   const validate = useCallback((h: Hero | null) => {
     const errs: Record<string, string> = {};
@@ -119,6 +122,22 @@ export default function AdminHero() {
   const setHeroField = (key: keyof Hero, value: Hero[keyof Hero]) => {
     if (!hero) return;
     setHero({ ...hero, [key]: value });
+  };
+
+  // Open modal with a working copy
+  const openEditModal = () => {
+    setEditingHero(hero ? JSON.parse(JSON.stringify(hero)) as Hero : {
+      title: '', subtitle: '', tagline: '', image: '', ctaPrimary: '', urgency: '',
+      stats: { clients: '', costSaved: '', rating: '' }
+    });
+    setEditOpen(true);
+  };
+
+  const applyEditModal = () => {
+    if (editingHero) {
+      setHero(editingHero);
+    }
+    setEditOpen(false);
   };
 
   const setStatField = (key: string, value: string) => {
@@ -233,6 +252,14 @@ export default function AdminHero() {
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = btnPrimary.boxShadow; }}
             >
               ↻ Refresh
+            </button>
+            <button 
+              onClick={openEditModal}
+              style={{ ...btnPrimary, background: 'linear-gradient(135deg, #d4af37 0%, #b68c21 100%)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(212, 175, 55, 0.45)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = btnPrimary.boxShadow; }}
+            >
+              ✎ Edit Hero (Modal)
             </button>
           </div>
         </div>
@@ -407,6 +434,60 @@ export default function AdminHero() {
           >
             Create Default Hero
           </button>
+        </div>
+      )}
+
+      {editOpen && editingHero && (
+        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 100 }} onClick={() => setEditOpen(false)}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }} />
+          <div style={{ position: 'relative', background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(51,65,85,0.6)', borderRadius: 16, padding: 20, maxWidth: 920, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>Edit Hero</h3>
+              <button onClick={() => setEditOpen(false)} style={{ padding: '8px 12px', borderRadius: 10, background: 'rgba(17,24,39,0.6)', color: '#cbd5e1', border: '1px solid rgba(55,65,81,0.6)' }}>×</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Title</label>
+                <input value={editingHero.title} onChange={e => setEditingHero({ ...editingHero, title: e.target.value })} style={{ ...inputBase }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Subtitle</label>
+                <input value={editingHero.subtitle} onChange={e => setEditingHero({ ...editingHero, subtitle: e.target.value })} style={{ ...inputBase }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Tagline</label>
+                <input value={editingHero.tagline} onChange={e => setEditingHero({ ...editingHero, tagline: e.target.value })} style={{ ...inputBase }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Image URL</label>
+                <input value={editingHero.image} onChange={e => setEditingHero({ ...editingHero, image: e.target.value })} style={{ ...inputBase }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Primary CTA</label>
+                <input value={editingHero.ctaPrimary} onChange={e => setEditingHero({ ...editingHero, ctaPrimary: e.target.value })} style={{ ...inputBase }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Urgency</label>
+                <input value={editingHero.urgency} onChange={e => setEditingHero({ ...editingHero, urgency: e.target.value })} style={{ ...inputBase }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Stats: Clients</label>
+                <input value={editingHero.stats.clients} onChange={e => setEditingHero({ ...editingHero, stats: { ...editingHero.stats, clients: e.target.value } })} style={{ ...inputBase }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Stats: Cost Saved</label>
+                <input value={editingHero.stats.costSaved} onChange={e => setEditingHero({ ...editingHero, stats: { ...editingHero.stats, costSaved: e.target.value } })} style={{ ...inputBase }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>Stats: Rating</label>
+                <input value={editingHero.stats.rating} onChange={e => setEditingHero({ ...editingHero, stats: { ...editingHero.stats, rating: e.target.value } })} style={{ ...inputBase }} />
+              </div>
+            </div>
+            <div style={{ marginTop: 14, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setEditOpen(false)} style={{ padding: '10px 16px', borderRadius: 10, background: 'rgba(17,24,39,0.6)', color: '#cbd5e1', fontWeight: 600, border: '1px solid rgba(55,65,81,0.6)' }}>Cancel</button>
+              <button onClick={applyEditModal} style={{ ...btnPrimary, background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' }}>Apply</button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { PageHeader, ControlsBar, FormField, AdminInput, AdminTextarea, AdminSelect, StatusBadge, ActionButton, Toast } from './AdminFormComponents';
 
 type Lang = 'en' | 'de';
 
@@ -51,6 +52,9 @@ export default function AdminServices() {
   const [savingOrder, setSavingOrder] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
   const [query, setQuery] = useState('');
+  // Modal edit state similar to Pricing/How It Works
+  const [editTarget, setEditTarget] = useState<Service | null>(null);
+  const [editingService, setEditingService] = useState<Service | null>(null);
 
   const isDirty = useCallback((idx: number) => {
     if (!originalServices[idx]) return true;
@@ -112,7 +116,8 @@ export default function AdminServices() {
   };
 
   const logHttpError = async (res: Response, context: string) => {
-    if (import.meta.env.DEV) {
+    const __ENV = ((import.meta as unknown) as { env?: Record<string, any> }).env || {};
+    if (__ENV && __ENV.DEV) {
       let body = '';
       try { body = await res.clone().text(); } catch { /* ignore */ }
       console.error('[AdminServices] request failed', {
@@ -202,7 +207,6 @@ export default function AdminServices() {
   };
 
   const card = { background: '#0b1220', border: '1px solid #1f2937', borderRadius: 14, padding: 16, boxShadow: '0 8px 20px rgba(0,0,0,0.35)' } as const;
-  const chip = { color: '#10b981', background: '#062e24', padding: '6px 12px', borderRadius: 999, fontWeight: 700 } as const;
   const inputBase = { padding: 10, border: '1px solid #334155', background: '#0f172a', color: '#e5e7eb', borderRadius: 10, outline: 'none' } as const;
   const btnPrimary = { padding: '8px 12px', borderRadius: 8, background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: 14, border: '1px solid #1d4ed8', cursor: 'pointer' } as const;
   const btnSecondary = { padding: '8px 12px', borderRadius: 8, background: '#111827', color: '#e5e7eb', fontWeight: 600, fontSize: 14, border: '1px solid #374151', cursor: 'pointer' } as const;
@@ -210,54 +214,63 @@ export default function AdminServices() {
   const tdStyle = { padding: 10, borderTop: '1px solid #1f2937', verticalAlign: 'top' as const };
 
   return (
-    <div style={{ padding: 0, maxWidth: '100%', margin: '0 auto', color: '#e5e7eb' }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 28, fontWeight: 900, marginBottom: 8, letterSpacing: -0.3, color: '#fff' }}>Services Management</h2>
-        <p style={{ color: '#9ca3af', fontSize: 14 }}>Manage your services for English and German languages</p>
-      </div>
+    <div className="text-foreground">
+      <PageHeader
+        title="Services Management"
+        description="Manage your services for English and German languages"
+      />
 
-      <div style={{ ...card, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <label>Language
-          <select value={lang} onChange={e => setLang(e.target.value as Lang)} style={{ ...inputBase, marginLeft: 8, padding: 8, width: 160 }}>
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
-          </select>
-          </label>
-
-          {loading && <span style={{ color: '#9ca3af' }}>Loading…</span>}
-          {error && <span style={{ color: '#f87171' }}>{error}</span>}
+      <ControlsBar>
+        <div className="flex items-center gap-4 flex-wrap">
+          <FormField label="Language">
+            <AdminSelect value={lang} onChange={e => setLang(e.target.value as Lang)} className="max-w-xs">
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+            </AdminSelect>
+          </FormField>
+          {loading && (
+            <StatusBadge type="info">Loading…</StatusBadge>
+          )}
+          {error && (
+            <StatusBadge type="error">{error}</StatusBadge>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div className="flex items-center gap-3">
           {!hasToken ? (
             <>
-              <input placeholder="ADMIN_TOKEN" value={token} onChange={e => setToken(e.target.value)} style={{ ...inputBase, width: 260 }} />
-              <button onClick={load} disabled={!hasToken && token.trim().length === 0} style={{ ...btnPrimary, opacity: token.trim() ? 1 : 0.6 }}>Load</button>
+              <AdminInput placeholder="ADMIN_TOKEN" value={token} onChange={e => setToken(e.target.value)} className="w-64" />
+              <ActionButton onClick={load} disabled={!hasToken && token.trim().length === 0}>
+                Load
+              </ActionButton>
               {envToken && (
-                <button onClick={() => setToken(envToken)} style={{ ...btnSecondary }}>Use env token</button>
+                <ActionButton variant="secondary" onClick={() => setToken(envToken)}>
+                  Use env token
+                </ActionButton>
               )}
             </>
           ) : (
             <>
-              <span style={chip}>Token loaded</span>
-              <button onClick={() => setToken('')} style={btnSecondary}>Change token</button>
+              <StatusBadge type="success">Token loaded</StatusBadge>
+              <ActionButton variant="secondary" onClick={() => setToken('')}>
+                Change token
+              </ActionButton>
             </>
           )}
-          <div style={{ display: 'flex', gap: 10, marginLeft: 8 }}>
-            <span style={{ color: '#9ca3af', fontSize: 12 }}>API: {API_BASE}</span>
-            <span style={{ color: hasToken ? '#10b981' : '#f87171', fontSize: 12 }}>Token: {hasToken ? 'yes' : 'no'}</span>
+          <div className="flex items-center gap-3 ml-2 text-xs text-slate-400">
+            <span>API: {API_BASE}</span>
+            <span className={hasToken ? 'text-green-300' : 'text-red-300'}>Token: {hasToken ? 'yes' : 'no'}</span>
           </div>
         </div>
-      </div>
+      </ControlsBar>
 
-      <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ color: '#9ca3af', fontSize: 13 }}>Services: {services.length}</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input placeholder="Search services…" value={query} onChange={e => setQuery(e.target.value)} style={{ ...inputBase, width: 260 }} />
-          <button onClick={() => load()} style={btnSecondary}>Refresh</button>
-          <button onClick={() => setAddOpen(v => !v)} style={btnPrimary}>{addOpen ? 'Hide Add' : 'Add Service'}</button>
+      <ControlsBar>
+        <div className="text-slate-400 text-sm">Services: {services.length}</div>
+        <div className="flex items-center gap-3">
+          <AdminInput placeholder="Search services…" value={query} onChange={e => setQuery(e.target.value)} className="w-64" />
+          <ActionButton variant="secondary" onClick={() => load()}>Refresh</ActionButton>
+          <ActionButton onClick={() => setAddOpen(true)}>Add Service</ActionButton>
         </div>
-      </div>
+      </ControlsBar>
 
       <div style={{ ...card, padding: 0, maxHeight: 460, overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -276,7 +289,7 @@ export default function AdminServices() {
               const q = query.trim().toLowerCase();
               const matches = !q || [String(s.order), s.title, s.description, s.benefit, s.icon].join(' ').toLowerCase().includes(q);
               return (
-              <tr key={s._id || s.order} onMouseEnter={() => setHoverRow(idx)} onMouseLeave={() => setHoverRow(r => (r===idx?null:r))} style={{ background: hoverRow === idx ? '#0e1a33' : (idx % 2 ? '#0b1426' : 'transparent'), transition: 'background 120ms ease', display: matches ? undefined : 'none' }}>
+              <tr key={s._id || s.order} onMouseEnter={() => setHoverRow(idx)} onMouseLeave={() => setHoverRow(r => (r===idx?null:r))} onClick={() => { setEditTarget(s); setEditingService({ ...s }); }} style={{ background: hoverRow === idx ? '#0e1a33' : (idx % 2 ? '#0b1426' : 'transparent'), transition: 'background 120ms ease', display: matches ? undefined : 'none', cursor: 'pointer' }}>
                 <td style={tdStyle}>
                   <input type="number" min={0} value={s.order} onChange={e => setServiceField(idx, 'order', Number(e.target.value))} style={{ ...inputBase, width: 80, textAlign: 'center' as const }} />
                 </td>
@@ -300,7 +313,8 @@ export default function AdminServices() {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button onClick={() => onSave(s)} disabled={!hasToken || !isDirty(idx)} style={{ ...btnPrimary, opacity: hasToken && isDirty(idx) ? 1 : 0.6 }}>{savingOrder===s.order ? 'Saving…' : 'Save'}</button>
                     <button onClick={() => setServices(prev => prev.map((ss, i) => (i===idx ? { ...originalServices[idx] } : ss)))} disabled={!isDirty(idx)} style={{ ...btnSecondary, opacity: isDirty(idx) ? 1 : 0.6 }}>Revert</button>
-                    <button onClick={() => setDeleteTarget(s)} disabled={!hasToken} style={{ ...btnSecondary, opacity: hasToken ? 1 : 0.6 }}>Delete</button>
+                    <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(s); }} disabled={!hasToken} style={{ ...btnSecondary, opacity: hasToken ? 1 : 0.6 }}>Delete</button>
+                    <button onClick={(e) => { e.stopPropagation(); setEditTarget(s); setEditingService({ ...s }); }} style={btnSecondary}>Edit</button>
                   </div>
                 </td>
               </tr>
@@ -315,29 +329,99 @@ export default function AdminServices() {
         </table>
       </div>
 
-      <details open={addOpen} onToggle={e => setAddOpen((e.target as HTMLDetailsElement).open)} style={{ marginTop: 16 }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Add New Service</summary>
-        <div style={{ ...card, marginTop: 10 }}>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <input type="number" placeholder="Order" min={0} value={newService.order} onChange={e => setNewService({ ...newService, order: Number(e.target.value) })} style={{ ...inputBase, width: 140 }} />
-            <select value={newService.icon} onChange={e => setNewService({ ...newService, icon: e.target.value })} style={{ ...inputBase, width: 160 }}>
+      <details open={addOpen} onToggle={e => setAddOpen((e.target as HTMLDetailsElement).open)} className="mt-4">
+        <summary className="cursor-pointer font-bold text-white">Add New Service</summary>
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 mt-2">
+          <div className="flex gap-3 flex-wrap">
+            <AdminInput type="number" placeholder="Order" min={0} value={newService.order} onChange={e => setNewService({ ...newService, order: Number(e.target.value) })} className="w-36" />
+            <AdminSelect value={newService.icon} onChange={e => setNewService({ ...newService, icon: e.target.value })} className="w-40">
               {AVAILABLE_ICONS.map(icon => (
                 <option key={icon} value={icon}>{icon}</option>
               ))}
-            </select>
-            <input placeholder="Title" value={newService.title} onChange={e => setNewService({ ...newService, title: e.target.value })} style={{ ...inputBase, flex: '1 1 260px' }} />
-            <textarea rows={3} placeholder="Description" value={newService.description} onChange={e => setNewService({ ...newService, description: e.target.value })} style={{ ...inputBase, flex: '1 1 100%', minHeight: 80, resize: 'vertical' }} />
-            <input placeholder="Benefit" value={newService.benefit} onChange={e => setNewService({ ...newService, benefit: e.target.value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+            </AdminSelect>
+            <AdminInput placeholder="Title" value={newService.title} onChange={e => setNewService({ ...newService, title: e.target.value })} className="flex-1 min-w-[260px]" />
+            <AdminTextarea placeholder="Description" value={newService.description} onChange={e => setNewService({ ...newService, description: e.target.value })} className="flex-[1_1_100%] min-h-[80px]" />
+            <AdminInput placeholder="Benefit" value={newService.benefit} onChange={e => setNewService({ ...newService, benefit: e.target.value })} className="flex-1 min-w-[260px]" />
           </div>
-          <div style={{ marginTop: 12 }}>
-            <button onClick={onAdd} disabled={newService.order < 0 || !hasToken} style={{ ...btnPrimary, opacity: newService.order >= 0 && hasToken ? 1 : 0.6 }}>Add Service</button>
-            <button onClick={prefillSample} style={{ ...btnSecondary, marginLeft: 8 }}>Prefill sample</button>
+          <div className="mt-3 flex items-center gap-3">
+            <ActionButton onClick={onAdd} disabled={newService.order < 0 || !hasToken}>Add Service</ActionButton>
+            <ActionButton variant="secondary" onClick={prefillSample}>Prefill sample</ActionButton>
           </div>
         </div>
       </details>
       {toast && (
-        <div style={{ position: 'fixed', right: 16, bottom: 16, background: toast.type==='success' ? '#062e24' : '#3f1d1d', color: toast.type==='success' ? '#10b981' : '#f87171', border: '1px solid #1f2937', borderRadius: 10, padding: '10px 14px', fontWeight: 600 }}>
-          {toast.message}
+        <Toast type={toast.type === 'success' ? 'success' : 'error'} message={toast.message} onClose={() => setToast(null)} />
+      )}
+      {/* Add Service Modal */}
+      {addOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setAddOpen(false)}>
+          <div className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white">Add New Service</h3>
+              <button onClick={() => setAddOpen(false)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg">×</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Order">
+                <AdminInput type="number" min={0} value={newService.order} onChange={e => setNewService({ ...newService, order: Number((e.target as HTMLInputElement).value) })} />
+              </FormField>
+              <FormField label="Icon">
+                <AdminSelect value={newService.icon} onChange={e => setNewService({ ...newService, icon: (e.target as HTMLSelectElement).value })}>
+                  {AVAILABLE_ICONS.map(icon => (
+                    <option key={icon} value={icon}>{icon}</option>
+                  ))}
+                </AdminSelect>
+              </FormField>
+              <FormField label="Title" className="md:col-span-2">
+                <AdminInput value={newService.title} onChange={e => setNewService({ ...newService, title: (e.target as HTMLInputElement).value })} />
+              </FormField>
+              <FormField label="Benefit" className="md:col-span-2">
+                <AdminInput value={newService.benefit} onChange={e => setNewService({ ...newService, benefit: (e.target as HTMLInputElement).value })} />
+              </FormField>
+              <FormField label="Description" className="md:col-span-2">
+                <AdminTextarea rows={4} value={newService.description} onChange={e => setNewService({ ...newService, description: (e.target as HTMLTextAreaElement).value })} />
+              </FormField>
+            </div>
+            <div className="flex items-center gap-3 justify-end pt-4">
+              <ActionButton variant="secondary" onClick={prefillSample}>Prefill Sample</ActionButton>
+              <ActionButton variant="primary" onClick={onAdd} disabled={!hasToken || newService.order < 0}>Add Service</ActionButton>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Service Modal */}
+      {editTarget && editingService && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => { setEditTarget(null); setEditingService(null); }}>
+          <div className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white">Edit Service (Order: {editTarget.order})</h3>
+              <button onClick={() => { setEditTarget(null); setEditingService(null); }} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg">×</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Order">
+                <AdminInput type="number" value={editingService.order} disabled className="font-mono" />
+              </FormField>
+              <FormField label="Icon">
+                <AdminSelect value={editingService.icon} onChange={e => setEditingService({ ...editingService, icon: (e.target as HTMLSelectElement).value })}>
+                  {AVAILABLE_ICONS.map(icon => (
+                    <option key={icon} value={icon}>{icon}</option>
+                  ))}
+                </AdminSelect>
+              </FormField>
+              <FormField label="Title" className="md:col-span-2">
+                <AdminInput value={editingService.title} onChange={e => setEditingService({ ...editingService, title: (e.target as HTMLInputElement).value })} />
+              </FormField>
+              <FormField label="Benefit" className="md:col-span-2">
+                <AdminInput value={editingService.benefit} onChange={e => setEditingService({ ...editingService, benefit: (e.target as HTMLInputElement).value })} />
+              </FormField>
+              <FormField label="Description" className="md:col-span-2">
+                <AdminTextarea rows={4} value={editingService.description} onChange={e => setEditingService({ ...editingService, description: (e.target as HTMLTextAreaElement).value })} />
+              </FormField>
+            </div>
+            <div className="flex items-center gap-3 justify-end pt-4">
+              <ActionButton variant="secondary" onClick={() => { setEditTarget(null); setEditingService(null); }}>Cancel</ActionButton>
+              <ActionButton variant="primary" onClick={() => { if (editingService) void onSave(editingService); setEditTarget(null); setEditingService(null); }} disabled={!hasToken}>Save Changes</ActionButton>
+            </div>
+          </div>
         </div>
       )}
       {deleteTarget && (

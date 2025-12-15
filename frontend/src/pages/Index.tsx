@@ -13,7 +13,6 @@ import { FAQ } from "@/components/FAQ";
 import { CaseStudies } from "@/components/CaseStudies";
 import { Blog } from "@/components/Blog";
 import { FinalCTA } from "@/components/FinalCTA";
-import { Footer } from "@/components/Footer";
 
 const Index = () => {
   const location = useLocation();
@@ -51,9 +50,6 @@ const Index = () => {
 
       {/* Final CTA full-width, without extra side padding */}
       <FinalCTA />
-      
-      {/* Footer */}
-      <Footer />
     </main>
   );
 };

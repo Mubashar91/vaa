@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, Clock, Video, CheckCircle2, ArrowLeft, Menu, X, Phone, Mail, Star, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Footer } from "@/components/Footer";
+ 
 
 export const BookMeeting = () => {
   const navigate = useNavigate();
@@ -84,22 +84,6 @@ export const BookMeeting = () => {
                 <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
                 Home
               </Button>
-              
-              <div className="hidden lg:flex items-center gap-4 px-4 py-2 rounded-xl bg-muted/30 border border-border/50">
-                <a href="tel:+1234567890" className="flex items-center gap-2 text-muted-foreground hover:text-gold transition-all duration-300 font-medium group">
-                  <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center group-hover:bg-gold/20 transition-all duration-300">
-                    <Phone className="w-4 h-4 text-gold" />
-                  </div>
-                  <span className="text-sm">+1 (234) 567-890</span>
-                </a>
-                <div className="w-px h-6 bg-border/50" />
-                <a href="mailto:contact@donva.com" className="flex items-center gap-2 text-muted-foreground hover:text-gold transition-all duration-300 font-medium group">
-                  <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center group-hover:bg-gold/20 transition-all duration-300">
-                    <Mail className="w-4 h-4 text-gold" />
-                  </div>
-                  <span className="text-sm">contact@donva.com</span>
-                </a>
-              </div>
               
               <motion.div
                 whileHover={{ scale: 1.05 }}
@@ -188,39 +172,7 @@ export const BookMeeting = () => {
                     </Button>
                   </motion.div>
                   
-                  <div className="space-y-2 px-4">
-                    <motion.a
-                      href="tel:+1234567890"
-                      className="flex items-center gap-3 p-3 rounded-xl text-muted-foreground hover:text-gold hover:bg-gold/5 transition-all duration-300 group"
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center group-hover:bg-gold/20 transition-all duration-300">
-                        <Phone className="w-5 h-5 text-gold" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs text-muted-foreground/60 font-medium">Call Us</span>
-                        <span className="font-semibold">+1 (234) 567-890</span>
-                      </div>
-                    </motion.a>
-                    
-                    <motion.a
-                      href="mailto:contact@luxva.com"
-                      className="flex items-center gap-3 p-3 rounded-xl text-muted-foreground hover:text-gold hover:bg-gold/5 transition-all duration-300 group"
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center group-hover:bg-gold/20 transition-all duration-300">
-                        <Mail className="w-5 h-5 text-gold" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs text-muted-foreground/60 font-medium">Email Us</span>
-                        <span className="font-semibold">contact@donva.com</span>
-                      </div>
-                    </motion.a>
-                  </div>
+                  
                 </div>
               </motion.div>
             )}
@@ -434,8 +386,7 @@ export const BookMeeting = () => {
         </motion.div>
       </div>
 
-      {/* Professional Footer */}
-      <Footer />
+      
     </div>
   );
 };

@@ -49,6 +49,9 @@ export default function AdminTestimonials() {
   const [savingOrder, setSavingOrder] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Testimonial | null>(null);
   const [query, setQuery] = useState('');
+  // Modal edit state similar to other admin pages
+  const [editTarget, setEditTarget] = useState<Testimonial | null>(null);
+  const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
 
   const isDirty = useCallback((idx: number) => {
     if (!originalTestimonials[idx]) return true;
@@ -110,7 +113,8 @@ export default function AdminTestimonials() {
   };
 
   const logHttpError = async (res: Response, context: string) => {
-    if (import.meta.env.DEV) {
+    const __ENV = ((import.meta as unknown) as { env?: Record<string, any> }).env || {};
+    if (__ENV && __ENV.DEV) {
       let body = '';
       try { body = await res.clone().text(); } catch { /* ignore */ }
       console.error('[AdminTestimonials] request failed', {
@@ -253,7 +257,7 @@ export default function AdminTestimonials() {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input placeholder="Search testimonials…" value={query} onChange={e => setQuery(e.target.value)} style={{ ...inputBase, width: 260 }} />
           <button onClick={() => load()} style={btnSecondary}>Refresh</button>
-          <button onClick={() => setAddOpen(v => !v)} style={btnPrimary}>{addOpen ? 'Hide Add' : 'Add Testimonial'}</button>
+          <button onClick={() => setAddOpen(true)} style={btnPrimary}>Add Testimonial</button>
         </div>
       </div>
 
@@ -274,7 +278,7 @@ export default function AdminTestimonials() {
               const q = query.trim().toLowerCase();
               const matches = !q || [String(t.order), t.content, t.name, t.role, t.company].join(' ').toLowerCase().includes(q);
               return (
-              <tr key={t._id || t.order} onMouseEnter={() => setHoverRow(idx)} onMouseLeave={() => setHoverRow(r => (r===idx?null:r))} style={{ background: hoverRow === idx ? '#0e1a33' : (idx % 2 ? '#0b1426' : 'transparent'), transition: 'background 120ms ease', display: matches ? undefined : 'none' }}>
+              <tr key={t._id || t.order} onMouseEnter={() => setHoverRow(idx)} onMouseLeave={() => setHoverRow(r => (r===idx?null:r))} onClick={() => { setEditTarget(t); setEditingTestimonial({ ...t }); }} style={{ background: hoverRow === idx ? '#0e1a33' : (idx % 2 ? '#0b1426' : 'transparent'), transition: 'background 120ms ease', display: matches ? undefined : 'none', cursor: 'pointer' }}>
                 <td style={tdStyle}>
                   <input type="number" min={0} value={t.order} onChange={e => setTestimonialField(idx, 'order', Number(e.target.value))} style={{ ...inputBase, width: 80, textAlign: 'center' as const }} />
                 </td>
@@ -294,7 +298,7 @@ export default function AdminTestimonials() {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button onClick={() => onSave(t)} disabled={!hasToken || !isDirty(idx)} style={{ ...btnPrimary, opacity: hasToken && isDirty(idx) ? 1 : 0.6 }}>{savingOrder===t.order ? 'Saving…' : 'Save'}</button>
                     <button onClick={() => setTestimonials(prev => prev.map((tt, i) => (i===idx ? { ...originalTestimonials[idx] } : tt)))} disabled={!isDirty(idx)} style={{ ...btnSecondary, opacity: isDirty(idx) ? 1 : 0.6 }}>Revert</button>
-                    <button onClick={() => setDeleteTarget(t)} disabled={!hasToken} style={{ ...btnSecondary, opacity: hasToken ? 1 : 0.6 }}>Delete</button>
+                    <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(t); }} disabled={!hasToken} style={{ ...btnSecondary, opacity: hasToken ? 1 : 0.6 }}>Delete</button>
                   </div>
                 </td>
               </tr>
@@ -325,6 +329,53 @@ export default function AdminTestimonials() {
           </div>
         </div>
       </details>
+      {/* Add Testimonial Modal */}
+      {addOpen && (
+        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 50 }} onClick={() => setAddOpen(false)}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'relative', background: '#0b1220', border: '1px solid #1f2937', borderRadius: 14, padding: 16, maxWidth: 720, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>Add New Testimonial</h3>
+              <button onClick={() => setAddOpen(false)} style={{ ...btnSecondary }}>×</button>
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <input type="number" placeholder="Order" min={0} value={newTestimonial.order} onChange={e => setNewTestimonial({ ...newTestimonial, order: Number((e.target as HTMLInputElement).value) })} style={{ ...inputBase, width: 140 }} />
+              <textarea rows={3} placeholder="Content" value={newTestimonial.content} onChange={e => setNewTestimonial({ ...newTestimonial, content: (e.target as HTMLTextAreaElement).value })} style={{ ...inputBase, flex: '1 1 100%', minHeight: 80, resize: 'vertical' }} />
+              <input placeholder="Name" value={newTestimonial.name} onChange={e => setNewTestimonial({ ...newTestimonial, name: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+              <input placeholder="Role" value={newTestimonial.role} onChange={e => setNewTestimonial({ ...newTestimonial, role: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+              <input placeholder="Company" value={newTestimonial.company} onChange={e => setNewTestimonial({ ...newTestimonial, company: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={prefillSample} style={{ ...btnSecondary }}>Prefill sample</button>
+              <button onClick={onAdd} disabled={newTestimonial.order < 0 || !hasToken} style={{ ...btnPrimary, opacity: newTestimonial.order >= 0 && hasToken ? 1 : 0.6 }}>Add Testimonial</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Testimonial Modal */}
+      {editTarget && editingTestimonial && (
+        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 50 }} onClick={() => { setEditTarget(null); setEditingTestimonial(null); }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'relative', background: '#0b1220', border: '1px solid #1f2937', borderRadius: 14, padding: 16, maxWidth: 720, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>Edit Testimonial (Order: {editTarget.order})</h3>
+              <button onClick={() => { setEditTarget(null); setEditingTestimonial(null); }} style={{ ...btnSecondary }}>×</button>
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <input type="number" value={editingTestimonial.order} disabled style={{ ...inputBase, width: 140, color: '#9ca3af' }} />
+              <textarea rows={3} placeholder="Content" value={editingTestimonial.content} onChange={e => setEditingTestimonial({ ...editingTestimonial, content: (e.target as HTMLTextAreaElement).value })} style={{ ...inputBase, flex: '1 1 100%', minHeight: 80, resize: 'vertical' }} />
+              <input placeholder="Name" value={editingTestimonial.name} onChange={e => setEditingTestimonial({ ...editingTestimonial, name: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+              <input placeholder="Role" value={editingTestimonial.role} onChange={e => setEditingTestimonial({ ...editingTestimonial, role: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+              <input placeholder="Company" value={editingTestimonial.company} onChange={e => setEditingTestimonial({ ...editingTestimonial, company: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => { setEditTarget(null); setEditingTestimonial(null); }} style={btnSecondary}>Cancel</button>
+              <button onClick={() => { if (editingTestimonial) void onSave(editingTestimonial); setEditTarget(null); setEditingTestimonial(null); }} disabled={!hasToken} style={btnPrimary}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
       {toast && (
         <div style={{ position: 'fixed', right: 16, bottom: 16, background: toast.type==='success' ? '#062e24' : '#3f1d1d', color: toast.type==='success' ? '#10b981' : '#f87171', border: '1px solid #1f2937', borderRadius: 10, padding: '10px 14px', fontWeight: 600 }}>
           {toast.message}

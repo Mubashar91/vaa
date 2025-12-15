@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Mail, User, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { FormField, AdminInput, ActionButton, Toast } from '../AdminFormComponents';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
+const API_BASE = ((import.meta as unknown) as { env?: Record<string, string> }).env?.VITE_API_BASE || 'http://localhost:5001';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -102,75 +103,56 @@ export default function AdminLogin() {
           </div>
 
           {error && (
-            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm">
-              {error}
-            </div>
+            <Toast type="error" message={error} onClose={() => setError(null)} />
           )}
           {success && (
-            <div className="mb-4 p-4 bg-green-500/10 border border-green-500/30 rounded-xl text-green-300 text-sm">
-              {success}
-            </div>
+            <Toast type="success" message={success} onClose={() => setSuccess(null)} />
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required={!isLogin}
-                    className="w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                    placeholder="Enter your full name"
-                  />
-                </div>
-              </div>
+              <FormField label="Full Name" required className="relative">
+                <User className="absolute left-4 top-10 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <AdminInput
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required={!isLogin}
+                  className="pl-12"
+                  placeholder="Enter your full name"
+                />
+              </FormField>
             )}
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  placeholder="admin@example.com"
-                />
-              </div>
-            </div>
+            <FormField label="Email Address" required className="relative">
+              <Mail className="absolute left-4 top-10 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <AdminInput
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="pl-12"
+                placeholder="admin@example.com"
+              />
+            </FormField>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full pl-12 pr-12 py-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-gold transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
+            <FormField label="Password" required className="relative">
+              <Lock className="absolute left-4 top-10 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <AdminInput
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="pl-12 pr-12"
+                placeholder="Enter your password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-10 -translate-y-1/2 text-slate-400 hover:text-gold transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
               {!isLogin && (
                 <>
                   <div className="mt-2 h-2 w-full bg-slate-800 rounded-full overflow-hidden">
@@ -185,44 +167,30 @@ export default function AdminLogin() {
                   </p>
                 </>
               )}
-            </div>
+            </FormField>
 
             {!isLogin && (
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required={!isLogin}
-                    className="w-full pl-12 pr-12 py-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                    placeholder="Re-enter your password"
-                  />
-                </div>
-              </div>
+              <FormField label="Confirm Password" required className="relative">
+                <Lock className="absolute left-4 top-10 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <AdminInput
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required={!isLogin}
+                  className="pl-12 pr-12"
+                  placeholder="Re-enter your password"
+                />
+              </FormField>
             )}
 
-            <button
+            <ActionButton
               type="submit"
-              disabled={loading}
-              className="w-full py-3.5 bg-gradient-to-r from-gold to-yellow-600 hover:from-yellow-600 hover:to-gold text-black font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              loading={loading}
+              icon={isLogin ? LogIn : UserPlus}
+              className="w-full justify-center"
             >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <>
-                  {isLogin ? <LogIn className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
-                  <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
-                </>
-              )}
-            </button>
+              {isLogin ? 'Sign In' : 'Create Account'}
+            </ActionButton>
           </form>
 
           <div className="mt-6 text-center">

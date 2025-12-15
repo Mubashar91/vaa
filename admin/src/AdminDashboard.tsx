@@ -1,10 +1,13 @@
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
-import { DollarSign, Workflow, Settings, LogOut, HelpCircle, Briefcase, MessageSquare, FileText, Trophy } from 'lucide-react';
+import { DollarSign, Workflow, Settings, LogOut, HelpCircle, Briefcase, MessageSquare, FileText, Trophy, Menu, X } from 'lucide-react';
 
 const API_BASE =
   ((import.meta as unknown) as { env?: Record<string, string> }).env?.VITE_API_BASE ||
   'http://localhost:5001';
+
+const ENV = ((import.meta as unknown) as { env?: Record<string, any> }).env || {};
+const IS_DEV = !!ENV.DEV;
 
 export default function AdminDashboard() {
   const location = useLocation();
@@ -19,6 +22,7 @@ export default function AdminDashboard() {
   });
 
   const hasToken = useMemo(() => token.trim().length > 0, [token]);
+  const [mobileOpen, setMobileOpen] = useState(false);
   
 
   useEffect(() => {
@@ -121,9 +125,18 @@ export default function AdminDashboard() {
 
       {/* Header */}
       <header className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/50 sticky top-0 z-50 shadow-lg shadow-black/20">
-        <div className="w-full px-6">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
+              {/* Mobile sidebar toggle */}
+              <button
+                type="button"
+                onClick={() => setMobileOpen(true)}
+                className="lg:hidden inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 border border-slate-700/60"
+                aria-label="Open navigation menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
               <div className="p-2 bg-gradient-to-br from-gold/20 to-gold/10 rounded-lg border border-gold/20">
                 <Settings className="w-5 h-5 text-gold" />
               </div>
@@ -150,7 +163,67 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <div className="relative w-full py-8">
+      {/* Mobile sidebar drawer */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setMobileOpen(false)}
+          />
+          {/* Panel */}
+          <div className="absolute inset-y-0 left-0 w-80 max-w-[85vw] bg-slate-900/95 border-r border-slate-800/70 p-5 shadow-2xl animate-in slide-in-from-left">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-gradient-to-br from-gold/20 to-gold/10 rounded-lg border border-gold/20">
+                  <Settings className="w-5 h-5 text-gold" />
+                </div>
+                <span className="text-white font-semibold">Menu</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 border border-slate-700/60"
+                aria-label="Close navigation menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <nav className="space-y-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setMobileOpen(false)}
+                    className={`group relative flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 ${
+                      isActive
+                        ? 'bg-gradient-to-r from-gold/25 via-gold/20 to-gold/15 border border-gold/50 text-gold shadow-lg shadow-gold/20'
+                        : 'text-slate-300 hover:bg-slate-700/60 hover:text-white border border-transparent hover:border-slate-600/60 hover:shadow-md'
+                    }`}
+                  >
+                    {isActive && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-gold to-yellow-500 rounded-r-full"></div>
+                    )}
+                    <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                      isActive 
+                        ? 'bg-gold/20 scale-110' 
+                        : 'bg-slate-700/30 group-hover:bg-gold/10 group-hover:scale-110'
+                    }`}>
+                      <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-gold' : 'text-slate-400 group-hover:text-gold'}`} />
+                    </div>
+                    <span className={`font-semibold text-sm flex-1 ${isActive ? 'text-gold' : ''} transition-colors`}>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      <div className="relative w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Navigation Cards */}
         {location.pathname === '/' || location.pathname === '' ? (
           <div className="mb-8">
@@ -213,7 +286,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-purple-300 uppercase tracking-wider mb-1">Environment</p>
-                      <p className="text-2xl font-bold text-white">{import.meta.env.DEV ? 'Dev' : 'Prod'}</p>
+                      <p className="text-2xl font-bold text-white">{IS_DEV ? 'Dev' : 'Prod'}</p>
                     </div>
                     <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
                       <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
@@ -330,8 +403,8 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-slate-400 uppercase tracking-wider mb-1.5 font-semibold">Environment</p>
-                      <p className="text-lg font-bold text-white">{import.meta.env.DEV ? 'Development' : 'Production'}</p>
-                      <p className="text-xs text-slate-500 mt-1">{import.meta.env.DEV ? 'Debug mode enabled' : 'Production ready'}</p>
+                      <p className="text-lg font-bold text-white">{IS_DEV ? 'Development' : 'Production'}</p>
+                      <p className="text-xs text-slate-500 mt-1">{IS_DEV ? 'Debug mode enabled' : 'Production ready'}</p>
                     </div>
                   </div>
                 </div>
