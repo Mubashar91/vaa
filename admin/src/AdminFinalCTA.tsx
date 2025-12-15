@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, Save, RotateCcw, RefreshCw, Loader2, CheckCircle2, AlertCircle, Globe, Shield, Sparkles } from 'lucide-react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 type Lang = 'en' | 'de';
 
@@ -40,147 +39,432 @@ export default function AdminFinalCTA() {
   const [token] = useState<string>(() => {
     try {
       return (localStorage.getItem('adminToken') || '').trim();
-    } catch (e) {
-      void e;
+    } catch {
       return '';
     }
   });
   const hasToken = useMemo(() => token.trim().length > 0, [token]);
-  const headers = useCallback((): Record<string, string> => {
-    const tk = token.trim();
-    return tk ? { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` } : { 'Content-Type': 'application/json' };
-  }, [token]);
+  const headers = useCallback((): Record<string, string> => ({
+    'Content-Type': 'application/json',
+    ...(token.trim() ? { Authorization: `Bearer ${token.trim()}` } : {}),
+  }), [token]);
 
   const [data, setData] = useState<FinalCTAData | null>(null);
   const [original, setOriginal] = useState<FinalCTAData | null>(null);
+  const [editingBenefits, setEditingBenefits] = useState<string>(''); // Raw for stable typing
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isDirty = useMemo(() => JSON.stringify(data) !== JSON.stringify(original), [data, original]);
+  const [focusedField, setFocusedField] = useState<string | null>(null); // For dynamic focus styles
+
+  // Effective data for isDirty/save (parses editingBenefits)
+  const effectiveData = useMemo(() => {
+    if (!data) return null;
+    const parsedBenefits = editingBenefits
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return { ...data, benefits: parsedBenefits };
+  }, [data, editingBenefits]);
+
+  const isDirty = useMemo(
+    () => effectiveData && original && JSON.stringify(effectiveData) !== JSON.stringify(original),
+    [effectiveData, original]
+  );
+
   const [saved, setSaved] = useState(false);
   const [open, setOpen] = useState({ hero: true, benefits: true, stats: true, trust: true, ctas: true });
-  const [isWide, setIsWide] = useState<boolean>(() => (typeof window !== 'undefined' ? window.innerWidth >= 1100 : true));
+  const [isWide, setIsWide] = useState<boolean>(() => typeof window !== 'undefined' ? window.innerWidth >= 1100 : true);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const isValidHref = (s: string) => {
-    const v = (s || '').trim();
-    if (!v) return false;
-    return v.startsWith('/') || /^https?:\/\//i.test(v);
-  };
-  const isValidWhats = (s: string) => {
-    const v = (s || '').trim();
-    if (!v) return true; // optional
-    return /^\d{6,15}$/.test(v);
-  };
+  // Refs for focus management
+  const lastFocusRef = useRef<{ id: string; position: number } | null>(null);
+  const inputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement>>({});
 
-  const errors = useMemo(() => {
-    if (!data) return {} as Record<string, boolean>;
-    return {
-      primaryLabel: !(data.ctas.primaryLabel || '').trim(),
-      primaryHref: !isValidHref(data.ctas.primaryHref),
-      secondaryHref: !!(data.ctas.secondaryHref || '').trim() && !isValidHref(data.ctas.secondaryHref),
-      whatsAppNumber: !isValidWhats(data.whatsAppNumber),
-    } as const;
-  }, [data]);
-  const hasErrors = useMemo(() => Object.values(errors as Record<string, boolean>).some(Boolean), [errors]);
-
-  useEffect(() => {
-    try { localStorage.setItem('adminToken', token); } catch (e) { void e; }
-  }, [token]);
-
-  const handle401 = useCallback(() => {
-    try { localStorage.removeItem('adminToken'); } catch (e) { void e; }
-    window.location.href = '/admin/login';
+  // Stable ref callbacks
+  const refCallbacks = useMemo(() => {
+    const callbacks: Record<string, (el: HTMLInputElement | HTMLTextAreaElement | null) => void> = {};
+    const fieldIds = [
+      'badge', 'headline1', 'headline2', 'subheading', 'benefits',
+      'stats-activeClients', 'stats-avgRoi', 'stats-satisfaction', 'stats-fastStart',
+      'trust-consultationTime', 'trust-consultationLabel', 'trust-responseTime',
+      'trust-responseLabel', 'trust-noCommitment', 'trust-noCommitmentLabel', 'trust-footer',
+      'primaryLabel', 'primaryHref', 'secondaryLabel', 'secondaryHref', 'whatsAppNumber'
+    ];
+    fieldIds.forEach((id) => {
+      callbacks[id] = (el) => {
+        if (el) inputRefs.current[id] = el;
+        else delete inputRefs.current[id];
+      };
+    });
+    return callbacks;
   }, []);
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true); setError(null);
-      const res = await fetch(`${API_BASE}/api/admin/final-cta?lang=${lang}`, { headers: headers() });
-      if (res.status === 401) return void handle401();
-      if (!res.ok) throw new Error(`Failed: ${res.status}`);
-      const json = await res.json();
-      const d: FinalCTAData | null = json.finalCta || null;
-      if (d) {
-        setData(structuredClone(d));
-        setOriginal(structuredClone(d));
-      } else {
-        const empty: FinalCTAData = {
-          badge: '', headlineLine1: '', headlineLine2: '', subheading: '', benefits: [],
-          stats: { activeClients: '', avgRoi: '', satisfaction: '', fastStart: '' },
-          trust: { consultationTime: '', consultationLabel: '', responseTime: '', responseLabel: '', noCommitment: '', noCommitmentLabel: '', footer: '' },
-          ctas: { primaryLabel: '', primaryHref: '/book-meeting', secondaryLabel: '', secondaryHref: '' },
-          whatsAppNumber: ''
-        };
-        setData(empty);
-        setOriginal(structuredClone(empty));
+  // Store/restore focus
+  const storeFocus = useCallback(() => {
+    const activeElement = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null;
+    if (activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA') {
+      const id = activeElement.id || activeElement.name || '';
+      if (id) {
+        lastFocusRef.current = { id, position: activeElement.selectionStart || 0 };
       }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
     }
-  }, [lang, headers, handle401]);
+  }, []);
 
-  useEffect(() => { if (hasToken) void load(); }, [hasToken, lang, load]);
+  const restoreFocus = useCallback(() => {
+    if (lastFocusRef.current) {
+      const { id, position } = lastFocusRef.current;
+      const element = inputRefs.current[id];
+      if (element) {
+        requestAnimationFrame(() => {
+          element.focus();
+          element.setSelectionRange?.(position, position);
+        });
+      }
+      lastFocusRef.current = null;
+    }
+  }, []);
 
-  // Persist open/closed state
+  // UI styles (removed invalid &:focus; dynamic via focusedField)
+  const ui = {
+    page: { width: '100%', padding: '20px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', minHeight: '100vh' },
+    container: {
+      maxWidth: 1300,
+      margin: '0 auto',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      backdropFilter: 'blur(10px)',
+      background: 'rgba(255, 255, 255, 0.95)',
+      borderRadius: '24px',
+      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)',
+      padding: '32px',
+      border: '1px solid rgba(255, 255, 255, 0.2)'
+    },
+    h1: {
+      fontSize: '28px',
+      fontWeight: 800,
+      margin: 0,
+      color: '#111827',
+      background: 'linear-gradient(90deg, #667eea, #764ba2)',
+      WebkitBackgroundClip: 'text' as const,
+      WebkitTextFillColor: 'transparent'
+    },
+    sub: { marginTop: '12px', fontSize: '14px', color: '#6b7280', lineHeight: 1.5 },
+    status: { marginTop: '12px', fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' },
+    row: { display: 'flex', gap: '16px', flexWrap: 'wrap' as const, alignItems: 'center' },
+    card: {
+      background: 'white',
+      border: '1px solid rgba(226, 232, 240, 0.6)',
+      borderRadius: '16px',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+      padding: '24px',
+      marginTop: '16px',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+    },
+    sectionHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingBottom: '12px',
+      borderBottom: '1px solid #f1f5f9',
+      marginBottom: '20px',
+      cursor: 'pointer'
+    },
+    sectionTitle: {
+      fontWeight: 700,
+      color: '#111827',
+      fontSize: '18px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px'
+    },
+    label: {
+      display: 'block',
+      fontSize: '14px',
+      fontWeight: 600,
+      color: '#374151',
+      marginBottom: '8px'
+    },
+    inputBase: {
+      width: '100%',
+      padding: '12px 16px',
+      borderRadius: '12px',
+      background: '#fff',
+      fontSize: '15px',
+      outline: 'none' as const,
+      transition: 'all 0.2s ease'
+    } as React.CSSProperties,
+    input: (isFocused: boolean, hasError: boolean) => ({
+      ...ui.inputBase,
+      border: `2px solid ${hasError ? '#ef4444' : isFocused ? '#667eea' : '#e5e7eb'}`,
+      background: hasError ? '#fef2f2' : isFocused ? '#fff7ed' : '#fff',
+      boxShadow: isFocused ? '0 0 0 3px rgba(102, 126, 234, 0.1)' : 'none'
+    }),
+    textarea: (isFocused: boolean, hasError: boolean) => ({
+      ...ui.inputBase,
+      border: `2px solid ${hasError ? '#ef4444' : isFocused ? '#667eea' : '#e5e7eb'}`,
+      background: hasError ? '#fef2f2' : isFocused ? '#fff7ed' : '#fff',
+      minHeight: '120px',
+      resize: 'vertical' as const,
+      boxShadow: isFocused ? '0 0 0 3px rgba(102, 126, 234, 0.1)' : 'none'
+    }),
+    help: { fontSize: '13px', color: '#6b7280', marginTop: '8px', display: 'flex', justifyContent: 'space-between' },
+    error: { fontSize: '13px', color: '#ef4444', marginTop: '8px', fontWeight: 500 },
+    btnRow: { display: 'flex', gap: '12px', flexWrap: 'wrap' as const, alignItems: 'center' },
+    btn: {
+      padding: '10px 20px',
+      border: '2px solid #e5e7eb',
+      borderRadius: '12px',
+      background: 'white',
+      color: '#374151',
+      fontWeight: 600,
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      fontSize: '14px'
+    } as React.CSSProperties,
+    btnPrimary: {
+      padding: '12px 24px',
+      borderRadius: '12px',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: 'white',
+      fontWeight: 700,
+      cursor: 'pointer',
+      border: 'none',
+      fontSize: '15px',
+      transition: 'all 0.2s ease'
+    } as React.CSSProperties,
+    grid: { display: 'grid', gap: '24px' } as React.CSSProperties,
+    asideGrid: { display: 'grid', gridTemplateColumns: '1fr', gap: '24px' } as React.CSSProperties,
+    previewBadge: {
+      display: 'inline-block',
+      padding: '6px 16px',
+      borderRadius: '20px',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      fontSize: '13px',
+      color: 'white',
+      marginBottom: '16px',
+      fontWeight: 600
+    },
+    previewCtaPrimary: {
+      display: 'inline-block',
+      textDecoration: 'none',
+      padding: '14px 28px',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: 'white',
+      borderRadius: '12px',
+      fontWeight: 700,
+      textAlign: 'center' as const,
+      transition: 'all 0.2s ease'
+    },
+    previewCtaSecondary: {
+      display: 'inline-block',
+      textDecoration: 'none',
+      padding: '14px 28px',
+      border: '2px solid #e5e7eb',
+      color: '#374151',
+      borderRadius: '12px',
+      fontWeight: 600,
+      textAlign: 'center' as const,
+      transition: 'all 0.2s ease'
+    },
+    toast: {
+      position: 'fixed' as const,
+      right: '24px',
+      bottom: '24px',
+      background: 'white',
+      color: '#111827',
+      padding: '16px 20px',
+      borderRadius: '16px',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+      borderLeft: '4px solid #10b981',
+      zIndex: 1000,
+      animation: 'slideIn 0.3s ease-out',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px'
+    },
+    statCard: {
+      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+      borderRadius: '12px',
+      padding: '16px',
+      textAlign: 'center' as const,
+      border: '1px solid rgba(226, 232, 240, 0.6)'
+    }
+  };
+
+  // Keyframes
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+      .loading-pulse { animation: pulse 1.5s ease-in-out infinite; }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
+  // Char count helper
+  const charCount = useCallback((value: string, max: number) => {
+    const length = value.length;
+    const percentage = Math.min((length / max) * 100, 100);
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ width: '60px', height: '4px', background: '#e5e7eb', borderRadius: '2px', overflow: 'hidden' }}>
+          <div
+            style={{
+              width: `${percentage}%`,
+              height: '100%',
+              background: length > max * 0.9 ? '#ef4444' : length > max * 0.75 ? '#f59e0b' : '#10b981',
+              transition: 'width 0.3s ease'
+            }}
+          />
+        </div>
+        <span style={{ fontSize: '12px', color: length > max ? '#ef4444' : '#6b7280' }}>{length}/{max}</span>
+      </div>
+    );
+  }, []);
+
+  // Validators
+  const isValidHref = useCallback((s: string) => {
+    const v = s.trim();
+    return !v || v.startsWith('/') || /^https?:\/\//i.test(v);
+  }, []);
+
+  const isValidWhats = useCallback((s: string) => {
+    const v = s.trim();
+    return !v || /^\d{6,15}$/.test(v);
+  }, []);
+
+  const errors = useMemo(() => {
+    if (!effectiveData) return {} as Record<string, boolean>;
+    return {
+      primaryLabel: !effectiveData.ctas.primaryLabel.trim(),
+      primaryHref: !isValidHref(effectiveData.ctas.primaryHref),
+      secondaryHref: !!effectiveData.ctas.secondaryHref.trim() && !isValidHref(effectiveData.ctas.secondaryHref),
+      whatsAppNumber: !isValidWhats(effectiveData.whatsAppNumber),
+    } as const;
+  }, [effectiveData, isValidHref, isValidWhats]);
+
+  const hasErrors = useMemo(() => Object.values(errors).some(Boolean), [errors]);
+
+  // Persist token/open
+  useEffect(() => {
+    try { localStorage.setItem('adminToken', token); } catch {}
+  }, [token]);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem('admin_finalcta_open');
       if (raw) setOpen(JSON.parse(raw));
-    } catch (e) { void e; }
+    } catch {}
   }, []);
+
   useEffect(() => {
-    try { localStorage.setItem('admin_finalcta_open', JSON.stringify(open)); } catch (e) { void e; }
+    try { localStorage.setItem('admin_finalcta_open', JSON.stringify(open)); } catch {} 
   }, [open]);
 
-  // Handle responsive layout
   useEffect(() => {
     const onResize = () => setIsWide(window.innerWidth >= 1100);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // Handle 401
+  const handle401 = useCallback(() => {
+    try { localStorage.removeItem('adminToken'); } catch {}
+    window.location.href = '/admin/login';
+  }, []);
+
+  // Load data
+  const load = useCallback(async () => {
+    storeFocus();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/final-cta?lang=${lang}`, { headers: headers() });
+      if (res.status === 401) return handle401();
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+      const json = await res.json();
+      const d: FinalCTAData | null = json.finalCta || null;
+      const loadedData = d || {
+        badge: '', headlineLine1: '', headlineLine2: '', subheading: '', benefits: [],
+        stats: { activeClients: '', avgRoi: '', satisfaction: '', fastStart: '' },
+        trust: { consultationTime: '', consultationLabel: '', responseTime: '', responseLabel: '', noCommitment: '', noCommitmentLabel: '', footer: '' },
+        ctas: { primaryLabel: '', primaryHref: '/book-meeting', secondaryLabel: '', secondaryHref: '' },
+        whatsAppNumber: ''
+      };
+      setData(structuredClone(loadedData));
+      setOriginal(structuredClone(loadedData));
+      setEditingBenefits(loadedData.benefits.join('\n'));
+      // Auto-focus first field after load
+      setTimeout(() => inputRefs.current['badge']?.focus(), 100);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load');
+    } finally {
+      setLoading(false);
+      restoreFocus();
+    }
+  }, [lang, headers, handle401, storeFocus, restoreFocus]);
+
+  useEffect(() => {
+    if (hasToken) void load();
+  }, [hasToken, load]);
+
+  // Save
   const onSave = useCallback(async () => {
-    if (!data) return;
+    if (!effectiveData || hasErrors) return;
+    storeFocus();
     setSaving(true);
     try {
       const res = await fetch(`${API_BASE}/api/admin/final-cta`, {
         method: 'POST',
         headers: headers(),
-        body: JSON.stringify({ lang, finalCta: data })
+        body: JSON.stringify({ lang, finalCta: effectiveData })
       });
-      if (res.status === 401) return void handle401();
+      if (res.status === 401) return handle401();
       if (!res.ok) throw new Error(`Save failed: ${res.status}`);
       await load();
       setSaved(true);
-      setToast({ type: 'success', message: 'Changes saved successfully!' });
-      setTimeout(() => setSaved(false), 2000);
+      setToast({ type: 'success', message: '✅ Changes saved successfully!' });
+      setTimeout(() => {
+        setSaved(false);
+        restoreFocus();
+      }, 2000);
       setTimeout(() => setToast(null), 3000);
     } catch (e: unknown) {
-      setToast({ type: 'error', message: e instanceof Error ? e.message : 'Save failed' });
-      setTimeout(() => setToast(null), 4000);
+      setToast({ type: 'error', message: `❌ ${e instanceof Error ? e.message : 'Save failed'}` });
+      setTimeout(() => {
+        setToast(null);
+        restoreFocus();
+      }, 4000);
     } finally {
       setSaving(false);
     }
-  }, [data, headers, lang, handle401, load]);
+  }, [effectiveData, hasErrors, headers, lang, handle401, load, storeFocus, restoreFocus]);
 
+  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const key = (e.key || '').toLowerCase();
+      const key = e.key.toLowerCase();
       if ((e.ctrlKey || e.metaKey) && key === 's') {
         e.preventDefault();
-        if (!hasErrors && hasToken && isDirty && !saving) {
-          void onSave();
-        }
+        if (!hasErrors && hasToken && isDirty && !saving) void onSave();
       }
+      if (e.key === 'Escape' && toast) setToast(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [hasErrors, hasToken, isDirty, saving, onSave]);
+  }, [hasErrors, hasToken, isDirty, saving, onSave, toast]);
 
-  // Warn before closing tab with unsaved changes
+  // Before unload warning
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDirty) {
@@ -192,534 +476,941 @@ export default function AdminFinalCTA() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [isDirty]);
 
-  const SectionCard = ({ title, isOpen, onToggle, children, icon: Icon }: { title: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode; icon?: React.ElementType }) => (
-    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-xl hover:border-gold/30 transition-all duration-300">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between mb-4 group"
-      >
-        <div className="flex items-center gap-3">
-          {Icon && <Icon className="w-5 h-5 text-gold" />}
-          <h3 className="text-lg font-bold text-white group-hover:text-gold transition-colors">{title}</h3>
-        </div>
-        {isOpen ? (
-          <ChevronUp className="w-5 h-5 text-slate-400 group-hover:text-gold transition-colors" />
-        ) : (
-          <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-gold transition-colors" />
-        )}
-      </button>
-      {isOpen && <div className="space-y-4">{children}</div>}
-    </div>
-  );
+  // Deferred preview data for perf
+  const deferredData = useDeferredValue(effectiveData);
 
-  const FormField = ({ label, required, error, helpText, children }: { label: string; required?: boolean; error?: string; helpText?: string; children: React.ReactNode }) => (
-    <div className="space-y-2">
-      <label className="block text-sm font-semibold text-slate-300">
-        {label} {required && <span className="text-red-400">*</span>}
-      </label>
-      {children}
-      {error && (
-        <p className="text-xs text-red-400 flex items-center gap-1">
-          <AlertCircle className="w-3 h-3" />
-          {error}
-        </p>
-      )}
-      {helpText && !error && (
-        <p className="text-xs text-slate-500">{helpText}</p>
-      )}
+  // Revert
+  const onRevert = useCallback(() => {
+    storeFocus();
+    if (original) {
+      setData(structuredClone(original));
+      setEditingBenefits(original.benefits.join('\n'));
+    }
+    restoreFocus();
+  }, [original, storeFocus, restoreFocus]);
+
+  // Lang change wrapper
+  const onLangChange = useCallback((newLang: Lang) => {
+    storeFocus();
+    setLang(newLang);
+    restoreFocus();
+  }, [storeFocus, restoreFocus]);
+
+  // SectionCard component
+  const SectionCard = useCallback(({ title, isOpen, onToggle, children, icon }: {
+    title: string;
+    isOpen: boolean;
+    onToggle: () => void;
+    children: React.ReactNode;
+    icon?: string;
+  }) => (
+    <div style={ui.card}>
+      <div style={ui.sectionHeader} onClick={onToggle} role="button" tabIndex={0} aria-expanded={isOpen}>
+        <div style={ui.sectionTitle}>
+          {icon && <span style={{ fontSize: '20px' }}>{icon}</span>}
+          {title}
+        </div>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onToggle}
+          style={{
+            ...ui.btn,
+            background: isOpen ? '#f8fafc' : 'white',
+            borderColor: isOpen ? '#cbd5e1' : '#e5e7eb'
+          }}
+          aria-label={isOpen ? 'Collapse section' : 'Expand section'}
+        >
+          {isOpen ? '▲ Collapse' : '▼ Expand'}
+        </button>
+      </div>
+      {isOpen && <div style={{ animation: 'slideIn 0.3s ease-out' }}>{children}</div>}
     </div>
-  );
+  ), [ui]);
+
+  // FormField component
+  const FormField = useCallback(({ label, required, error, helpText, children, id }: {
+    label: string;
+    required?: boolean;
+    error?: string;
+    helpText?: string;
+    children: React.ReactNode;
+    id?: string;
+  }) => (
+    <div style={{ marginBottom: '20px' }}>
+      <label style={ui.label} htmlFor={id}>
+        {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
+      </label>
+      <div>{children}</div>
+      {error && <div style={ui.error}>⚠️ {error}</div>}
+      {helpText && !error && <div style={ui.help}>{helpText}</div>}
+    </div>
+  ), [ui]);
+
+  // Prevent enter on non-textarea inputs
+  const preventEnterCapture = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter') {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' && (target as HTMLInputElement).type !== 'textarea') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+  }, []);
+
+  if (loading && !data) {
+    return (
+      <div style={ui.page}>
+        <div style={ui.container}>
+          <div style={ui.card}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    background: '#f1f5f9',
+                    borderRadius: '8px',
+                    height: '60px',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                    opacity: 0.6
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full py-6">
-      {/* Header Card */}
-      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 mb-6 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-gold/20 rounded-lg border border-gold/30">
-                <Sparkles className="w-5 h-5 text-gold" />
-              </div>
-              <h1 className="text-2xl font-extrabold text-white">Final CTA Management</h1>
+    <div style={ui.page} onKeyDown={preventEnterCapture}>
+      <div style={ui.container}>
+        {/* Header */}
+        <div style={ui.card}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h1 style={ui.h1}>Final CTA Management</h1>
+              <p style={ui.sub}>
+                Manage hero, benefits, stats, trust indicators, and call-to-action buttons.
+                Press <kbd style={{ padding: '2px 6px', background: '#f1f5f9', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}>Ctrl/Cmd + S</kbd> to save quickly.
+              </p>
             </div>
-            <p className="text-slate-400 text-sm ml-12">Manage hero, benefits, stats, trust indicators, and call-to-action buttons. Press <kbd className="px-2 py-1 bg-slate-700/50 rounded text-xs font-mono">Ctrl/Cmd + S</kbd> to save quickly.</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border backdrop-blur-sm ${
-              isDirty 
-                ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300' 
-                : 'bg-green-500/10 border-green-500/30 text-green-300'
-            }`}>
-              {isDirty ? (
-                <>
-                  <AlertCircle className="w-4 h-4" />
-                  <span className="text-sm font-semibold">Unsaved changes</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span className="text-sm font-semibold">All saved</span>
-                </>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {isDirty && (
+                <div style={{
+                  padding: '6px 12px',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  borderRadius: '8px',
+                  color: '#92400e',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <div style={{ width: '8px', height: '8px', background: '#f59e0b', borderRadius: '50%' }} />
+                  Unsaved changes
+                </div>
+              )}
+              {!isDirty && !loading && (
+                <div style={{
+                  padding: '6px 12px',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  borderRadius: '8px',
+                  color: '#065f46',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <div style={{ width: '8px', height: '8px', background: '#10b981', borderRadius: '50%' }} />
+                  All saved
+                </div>
               )}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Controls Bar */}
-      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 mb-6 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <FormField label="Language" required={false}>
-              <select
-                value={lang}
-                onChange={(e) => setLang(e.target.value as Lang)}
-                className="px-4 py-2.5 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-              >
-                <option value="en">English</option>
-                <option value="de">Deutsch</option>
-              </select>
-            </FormField>
-            {loading && (
-              <div className="flex items-center gap-2 text-slate-400">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Loading…</span>
-              </div>
-            )}
-            {error && (
-              <div className="flex items-center gap-2 text-red-400">
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-sm">{error}</span>
-              </div>
-            )}
+        {/* Controls */}
+        <div style={ui.card}>
+          <div style={ui.row}>
+            <div style={{ flex: 1, minWidth: '220px' }}>
+              <FormField label="Language" id="language-select">
+                <select
+                  id="language-select"
+                  value={lang}
+                  onChange={(e) => onLangChange(e.target.value as Lang)}
+                  style={{
+                    ...ui.inputBase,
+                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                    backgroundPosition: 'right 0.5rem center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundSize: '1.5em 1.5em',
+                    paddingRight: '2.5rem',
+                    appearance: 'none' as const,
+                    border: '2px solid #e5e7eb'
+                  }}
+                  aria-label="Select language"
+                >
+                  <option value="en">🇺🇸 English</option>
+                  <option value="de">🇩🇪 Deutsch</option>
+                </select>
+              </FormField>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {loading && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#667eea' }}>
+                  <span className="loading-pulse">⟳</span>
+                  <span>Loading...</span>
+                </div>
+              )}
+              {error && (
+                <div style={{
+                  padding: '8px 12px',
+                  background: '#fee2e2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  color: '#b91c1c',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span>⚠️</span>
+                  {error}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => load()}
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/60 hover:border-slate-500/60 text-slate-300 rounded-xl transition-all text-sm font-semibold"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
+          <div style={ui.btnRow}>
+            <button type="button" onClick={load} style={ui.btn} disabled={loading}>
+              🔄 Refresh
             </button>
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-              hasToken ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'
-            }`}>
-              <Shield className={`w-4 h-4 ${hasToken ? 'text-green-400' : 'text-red-400'}`} />
-              <span className={`text-xs font-semibold ${hasToken ? 'text-green-300' : 'text-red-300'}`}>
-                {hasToken ? 'Authenticated' : 'Not Authenticated'}
-              </span>
+            <div style={{
+              fontSize: '13px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: hasToken ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              color: hasToken ? '#065f46' : '#991b1b',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              {hasToken ? '🔐 Authenticated' : '⚠️ Not Authenticated'}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Success Message */}
-      {saved && (
-        <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-2xl p-4 mb-6 backdrop-blur-sm">
-          <div className="flex items-center gap-3 text-green-300">
-            <CheckCircle2 className="w-5 h-5" />
-            <span className="font-semibold">Changes saved successfully!</span>
-          </div>
-        </div>
-      )}
-
-      {/* Loading Skeleton */}
-      {!data && loading && (
-        <div className="space-y-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 h-32 animate-pulse" />
-          ))}
-        </div>
-      )}
-
-      {/* Main Form */}
-      {data && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Form Sections */}
-          <div className="lg:col-span-2 space-y-6">
-            <SectionCard
-              title="Hero Section"
-              isOpen={open.hero}
-              onToggle={() => setOpen({ ...open, hero: !open.hero })}
-              icon={Sparkles}
-            >
-              <FormField label="Badge">
-                <input
-                  type="text"
-                  placeholder="e.g., New: Free Setup"
-                  value={data.badge}
-                  onChange={(e) => setData({ ...data, badge: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                />
-              </FormField>
-              <FormField label="Headline Line 1">
-                <input
-                  type="text"
-                  placeholder="Main title line 1"
-                  value={data.headlineLine1}
-                  onChange={(e) => setData({ ...data, headlineLine1: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                />
-              </FormField>
-              <FormField label="Headline Line 2">
-                <input
-                  type="text"
-                  placeholder="Main title line 2"
-                  value={data.headlineLine2}
-                  onChange={(e) => setData({ ...data, headlineLine2: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                />
-              </FormField>
-              <FormField label="Subheading">
-                <textarea
-                  placeholder="Short supporting statement"
-                  value={data.subheading}
-                  onChange={(e) => setData({ ...data, subheading: e.target.value })}
-                  rows={3}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all resize-y min-h-[80px]"
-                />
-              </FormField>
-            </SectionCard>
-
-            <SectionCard
-              title="Benefits"
-              isOpen={open.benefits}
-              onToggle={() => setOpen({ ...open, benefits: !open.benefits })}
-            >
-              <FormField label="Benefits" helpText="Enter one benefit per line">
-                <textarea
-                  value={(data.benefits || []).join('\n')}
-                  onChange={(e) => setData({ ...data, benefits: e.target.value.split('\n').map(s => s.trim()).filter(Boolean) })}
-                  rows={6}
-                  placeholder="No Setup Fees&#10;Free Trial&#10;Native Managers&#10;24/7 Support"
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all resize-y font-mono text-sm"
-                />
-              </FormField>
-            </SectionCard>
-
-            <SectionCard
-              title="Statistics"
-              isOpen={open.stats}
-              onToggle={() => setOpen({ ...open, stats: !open.stats })}
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Active Clients">
-                  <input
-                    type="text"
-                    placeholder="e.g., 200+"
-                    value={data.stats.activeClients}
-                    onChange={(e) => setData({ ...data, stats: { ...data.stats, activeClients: e.target.value } })}
-                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  />
-                </FormField>
-                <FormField label="Avg ROI">
-                  <input
-                    type="text"
-                    placeholder="e.g., 3.5x"
-                    value={data.stats.avgRoi}
-                    onChange={(e) => setData({ ...data, stats: { ...data.stats, avgRoi: e.target.value } })}
-                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  />
-                </FormField>
-                <FormField label="Satisfaction">
-                  <input
-                    type="text"
-                    placeholder="e.g., 98%"
-                    value={data.stats.satisfaction}
-                    onChange={(e) => setData({ ...data, stats: { ...data.stats, satisfaction: e.target.value } })}
-                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  />
-                </FormField>
-                <FormField label="Fast Start">
-                  <input
-                    type="text"
-                    placeholder="e.g., 48h"
-                    value={data.stats.fastStart}
-                    onChange={(e) => setData({ ...data, stats: { ...data.stats, fastStart: e.target.value } })}
-                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  />
-                </FormField>
+        {/* Success Message */}
+        {saved && (
+          <div style={{
+            ...ui.card,
+            background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+            borderColor: '#10b981',
+            animation: 'slideIn 0.3s ease-out'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                background: '#10b981',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 'bold'
+              }}>
+                ✓
               </div>
-            </SectionCard>
-
-            <SectionCard
-              title="Trust Indicators"
-              isOpen={open.trust}
-              onToggle={() => setOpen({ ...open, trust: !open.trust })}
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Consultation Time">
-                  <input
-                    type="text"
-                    value={data.trust.consultationTime}
-                    onChange={(e) => setData({ ...data, trust: { ...data.trust, consultationTime: e.target.value } })}
-                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  />
-                </FormField>
-                <FormField label="Consultation Label">
-                  <input
-                    type="text"
-                    value={data.trust.consultationLabel}
-                    onChange={(e) => setData({ ...data, trust: { ...data.trust, consultationLabel: e.target.value } })}
-                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  />
-                </FormField>
-                <FormField label="Response Time">
-                  <input
-                    type="text"
-                    value={data.trust.responseTime}
-                    onChange={(e) => setData({ ...data, trust: { ...data.trust, responseTime: e.target.value } })}
-                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  />
-                </FormField>
-                <FormField label="Response Label">
-                  <input
-                    type="text"
-                    value={data.trust.responseLabel}
-                    onChange={(e) => setData({ ...data, trust: { ...data.trust, responseLabel: e.target.value } })}
-                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  />
-                </FormField>
-                <FormField label="No Commitment">
-                  <input
-                    type="text"
-                    value={data.trust.noCommitment}
-                    onChange={(e) => setData({ ...data, trust: { ...data.trust, noCommitment: e.target.value } })}
-                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  />
-                </FormField>
-                <FormField label="No Commitment Label">
-                  <input
-                    type="text"
-                    value={data.trust.noCommitmentLabel}
-                    onChange={(e) => setData({ ...data, trust: { ...data.trust, noCommitmentLabel: e.target.value } })}
-                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  />
-                </FormField>
-              </div>
-              <FormField label="Footer Text">
-                <textarea
-                  value={data.trust.footer}
-                  onChange={(e) => setData({ ...data, trust: { ...data.trust, footer: e.target.value } })}
-                  rows={3}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all resize-y min-h-[80px]"
-                />
-              </FormField>
-            </SectionCard>
-
-            <SectionCard
-              title="Call-to-Action Buttons"
-              isOpen={open.ctas}
-              onToggle={() => setOpen({ ...open, ctas: !open.ctas })}
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Primary Label" required error={errors.primaryLabel ? 'Required' : undefined}>
-                  <input
-                    type="text"
-                    value={data.ctas.primaryLabel}
-                    onChange={(e) => setData({ ...data, ctas: { ...data.ctas, primaryLabel: e.target.value } })}
-                    className={`w-full px-4 py-3 bg-slate-900/60 border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all ${
-                      errors.primaryLabel
-                        ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50'
-                        : 'border-slate-700/60 focus:ring-gold/50 focus:border-gold/50'
-                    }`}
-                  />
-                </FormField>
-                <FormField label="Primary Href" required error={errors.primaryHref ? 'Required. Use /relative or http(s) URL' : undefined}>
-                  <input
-                    type="text"
-                    value={data.ctas.primaryHref}
-                    onChange={(e) => setData({ ...data, ctas: { ...data.ctas, primaryHref: e.target.value } })}
-                    className={`w-full px-4 py-3 bg-slate-900/60 border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all font-mono text-sm ${
-                      errors.primaryHref
-                        ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50'
-                        : 'border-slate-700/60 focus:ring-gold/50 focus:border-gold/50'
-                    }`}
-                  />
-                </FormField>
-                <FormField label="Secondary Label">
-                  <input
-                    type="text"
-                    placeholder="e.g., Chat on WhatsApp"
-                    value={data.ctas.secondaryLabel}
-                    onChange={(e) => setData({ ...data, ctas: { ...data.ctas, secondaryLabel: e.target.value } })}
-                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700/60 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
-                  />
-                </FormField>
-                <FormField label="Secondary Href" error={errors.secondaryHref ? 'Invalid URL' : undefined}>
-                  <input
-                    type="text"
-                    placeholder="Leave blank to auto-use WhatsApp number"
-                    value={data.ctas.secondaryHref}
-                    onChange={(e) => setData({ ...data, ctas: { ...data.ctas, secondaryHref: e.target.value } })}
-                    className={`w-full px-4 py-3 bg-slate-900/60 border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all font-mono text-sm ${
-                      errors.secondaryHref
-                        ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50'
-                        : 'border-slate-700/60 focus:ring-gold/50 focus:border-gold/50'
-                    }`}
-                  />
-                </FormField>
-              </div>
-              <FormField
-                label="WhatsApp Number"
-                error={errors.whatsAppNumber ? 'Digits only, 6-15 length' : undefined}
-                helpText={!errors.whatsAppNumber ? 'Used when Secondary Href is empty to auto-build wa.me link' : undefined}
-              >
-                <input
-                  type="text"
-                  placeholder="Digits only, e.g., 15551234567"
-                  value={data.whatsAppNumber}
-                  onChange={(e) => setData({ ...data, whatsAppNumber: e.target.value })}
-                  className={`w-full px-4 py-3 bg-slate-900/60 border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all font-mono ${
-                    errors.whatsAppNumber
-                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50'
-                      : 'border-slate-700/60 focus:ring-gold/50 focus:border-gold/50'
-                  }`}
-                />
-              </FormField>
-            </SectionCard>
-          </div>
-
-          {/* Live Preview Sidebar */}
-          {isWide && (
-            <div className="lg:col-span-1">
-              <div className="sticky top-24 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-xl">
-                <div className="flex items-center gap-2 mb-4">
-                  <Globe className="w-5 h-5 text-gold" />
-                  <h3 className="text-lg font-bold text-white">Live Preview</h3>
-                </div>
-                <p className="text-xs text-slate-400 mb-4">This is a simplified preview using your current edits.</p>
-                <div className="p-6 rounded-xl bg-gradient-to-br from-gold/20 via-amber-500/20 to-yellow-600/20 border border-gold/30">
-                  <div className="inline-flex items-center gap-2 bg-white/25 backdrop-blur-sm rounded-full px-3 py-1.5 mb-4 border border-white/30">
-                    <Sparkles className="w-3 h-3 text-white" />
-                    <span className="text-white text-xs font-bold">{(data.badge || 'Badge').trim() || 'Badge'}</span>
-                  </div>
-                  <h4 className="text-white font-extrabold text-xl mb-1 leading-tight">{(data.headlineLine1 || 'Headline 1').trim() || 'Headline 1'}</h4>
-                  <h4 className="text-white font-extrabold text-xl mb-3 leading-tight">{(data.headlineLine2 || 'Headline 2').trim() || 'Headline 2'}</h4>
-                  <p className="text-white/90 text-sm mb-4">{(data.subheading || 'Subheading').trim() || 'Subheading'}</p>
-                  <ul className="space-y-1 mb-4 text-white/95 text-xs">
-                    {(data.benefits || []).slice(0, 4).map((b, i) => (
-                      <li key={i} className="flex items-center gap-2">
-                        <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center border border-white/30">
-                      <div className="text-white font-bold text-sm">{data.stats.activeClients || '200+'}</div>
-                      <div className="text-white/80 text-[10px]">Clients</div>
-                    </div>
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center border border-white/30">
-                      <div className="text-white font-bold text-sm">{data.stats.avgRoi || '3.5x'}</div>
-                      <div className="text-white/80 text-[10px]">ROI</div>
-                    </div>
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center border border-white/30">
-                      <div className="text-white font-bold text-sm">{data.stats.satisfaction || '98%'}</div>
-                      <div className="text-white/80 text-[10px]">Satisfaction</div>
-                    </div>
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center border border-white/30">
-                      <div className="text-white font-bold text-sm">{data.stats.fastStart || '48h'}</div>
-                      <div className="text-white/80 text-[10px]">Fast Start</div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <a
-                      href={data.ctas.primaryHref}
-                      className="bg-white text-gold px-4 py-2 rounded-lg font-bold text-sm text-center hover:bg-white/95 transition-colors"
-                    >
-                      {data.ctas.primaryLabel || 'Primary CTA'}
-                    </a>
-                    <a
-                      href={data.ctas.secondaryHref || (data.whatsAppNumber ? `https://wa.me/${data.whatsAppNumber}` : '#')}
-                      className="border-2 border-white text-white px-4 py-2 rounded-lg font-semibold text-sm text-center hover:bg-white/10 transition-colors"
-                    >
-                      {data.ctas.secondaryLabel || 'Secondary CTA'}
-                    </a>
-                  </div>
+              <div>
+                <div style={{ fontWeight: 600, color: '#065f46' }}>Changes saved successfully!</div>
+                <div style={{ fontSize: '13px', color: '#047857', marginTop: '4px' }}>
+                  The Final CTA has been updated and is now live.
                 </div>
               </div>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Sticky Action Bar */}
-      {data && (
-        <div className="sticky bottom-0 mt-6 bg-gradient-to-br from-slate-900/95 to-slate-950/95 backdrop-blur-xl border-t border-slate-700/60 rounded-t-2xl p-4 shadow-2xl">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            {isDirty && (
-              <div className="flex items-center gap-2 text-yellow-400 text-sm font-semibold">
-                <AlertCircle className="w-4 h-4" />
-                <span>You have unsaved changes</span>
+        {/* Main Form */}
+        {data && (
+          <div style={{ ...ui.grid, gridTemplateColumns: isWide ? '2fr 1fr' : '1fr' }}>
+            {/* Form Sections */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+              <SectionCard title="Hero Section" icon="🌟" isOpen={open.hero} onToggle={() => setOpen((prev) => ({ ...prev, hero: !prev.hero }))}>
+                <FormField label="Badge" helpText="Small badge above headline (e.g., 'New: Free Setup')" id="badge">
+                  <input
+                    id="badge"
+                    type="text"
+                    placeholder="e.g., New: Free Setup"
+                    value={data.badge}
+                    onChange={(e) => setData((prev) => ({ ...prev!, badge: e.target.value }))}
+                    onFocus={() => setFocusedField('badge')}
+                    onBlur={() => setFocusedField(null)}
+                    style={ui.input(focusedField === 'badge', false)}
+                    ref={refCallbacks.badge}
+                    maxLength={50}
+                    aria-describedby="badge-help"
+                  />
+                  {charCount(data.badge, 50)}
+                </FormField>
+                <FormField label="Headline Line 1" helpText="First headline line" id="headline1">
+                  <input
+                    id="headline1"
+                    type="text"
+                    placeholder="e.g., Ready to Grow Your Business?"
+                    value={data.headlineLine1}
+                    onChange={(e) => setData((prev) => ({ ...prev!, headlineLine1: e.target.value }))}
+                    onFocus={() => setFocusedField('headline1')}
+                    onBlur={() => setFocusedField(null)}
+                    style={ui.input(focusedField === 'headline1', false)}
+                    ref={refCallbacks.headline1}
+                    maxLength={90}
+                  />
+                  <div style={ui.help}>{charCount(data.headlineLine1, 90)}</div>
+                </FormField>
+                <FormField label="Headline Line 2" helpText="Second headline line" id="headline2">
+                  <input
+                    id="headline2"
+                    type="text"
+                    placeholder="e.g., Let's Get Started Today"
+                    value={data.headlineLine2}
+                    onChange={(e) => setData((prev) => ({ ...prev!, headlineLine2: e.target.value }))}
+                    onFocus={() => setFocusedField('headline2')}
+                    onBlur={() => setFocusedField(null)}
+                    style={ui.input(focusedField === 'headline2', false)}
+                    ref={refCallbacks.headline2}
+                    maxLength={90}
+                  />
+                  <div style={ui.help}>{charCount(data.headlineLine2, 90)}</div>
+                </FormField>
+                <FormField label="Subheading" helpText="Text below headline" id="subheading">
+                  <textarea
+                    id="subheading"
+                    placeholder="e.g., Join hundreds of businesses that trust us..."
+                    value={data.subheading}
+                    onChange={(e) => setData((prev) => ({ ...prev!, subheading: e.target.value }))}
+                    onFocus={() => setFocusedField('subheading')}
+                    onBlur={() => setFocusedField(null)}
+                    rows={3}
+                    style={ui.textarea(focusedField === 'subheading', false)}
+                    ref={refCallbacks.subheading}
+                    maxLength={220}
+                  />
+                  <div style={ui.help}>{charCount(data.subheading, 220)}</div>
+                </FormField>
+              </SectionCard>
+
+              <SectionCard title="Benefits" icon="🎯" isOpen={open.benefits} onToggle={() => setOpen((prev) => ({ ...prev, benefits: !prev.benefits }))}>
+                <FormField
+                  label="Benefits"
+                  helpText="One per line. 3-6 recommended."
+                  id="benefits"
+                >
+                  <textarea
+                    id="benefits"
+                    value={editingBenefits}
+                    onChange={(e) => setEditingBenefits(e.target.value)} // Raw: no parse during typing
+                    onBlur={(e) => {
+                      const parsed = e.target.value.split('\n').map((s) => s.trim()).filter(Boolean);
+                      setData((prev) => ({ ...prev!, benefits: parsed }));
+                      setEditingBenefits(parsed.join('\n'));
+                      setFocusedField(null);
+                    }}
+                    onFocus={() => setFocusedField('benefits')}
+                    rows={6}
+                    placeholder="No Setup Fees\nFree Trial\nNative Managers\n24/7 Support"
+                    style={ui.textarea(focusedField === 'benefits', false)}
+                    ref={refCallbacks.benefits}
+                  />
+                  <div style={{ ...ui.help, marginTop: '8px' }}>
+                    <span>{effectiveData?.benefits.length || 0} benefit{ effectiveData?.benefits.length !== 1 ? 's' : ''}</span>
+                  </div>
+                </FormField>
+              </SectionCard>
+
+              <SectionCard title="Statistics" icon="📊" isOpen={open.stats} onToggle={() => setOpen((prev) => ({ ...prev, stats: !prev.stats }))}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <FormField label="Active Clients" helpText="e.g., 200+" id="stats-activeClients">
+                    <input
+                      id="stats-activeClients"
+                      type="text"
+                      placeholder="e.g., 200+"
+                      value={data.stats.activeClients}
+                      onChange={(e) => setData((prev) => ({
+                        ...prev!,
+                        stats: { ...prev!.stats, activeClients: e.target.value }
+                      }))}
+                      onFocus={() => setFocusedField('stats-activeClients')}
+                      onBlur={() => setFocusedField(null)}
+                      style={ui.input(focusedField === 'stats-activeClients', false)}
+                      ref={refCallbacks['stats-activeClients']}
+                      maxLength={20}
+                    />
+                  </FormField>
+                  <FormField label="Average ROI" helpText="e.g., 3.5x" id="stats-avgRoi">
+                    <input
+                      id="stats-avgRoi"
+                      type="text"
+                      placeholder="e.g., 3.5x"
+                      value={data.stats.avgRoi}
+                      onChange={(e) => setData((prev) => ({
+                        ...prev!,
+                        stats: { ...prev!.stats, avgRoi: e.target.value }
+                      }))}
+                      onFocus={() => setFocusedField('stats-avgRoi')}
+                      onBlur={() => setFocusedField(null)}
+                      style={ui.input(focusedField === 'stats-avgRoi', false)}
+                      ref={refCallbacks['stats-avgRoi']}
+                      maxLength={20}
+                    />
+                  </FormField>
+                  <FormField label="Satisfaction Rate" helpText="e.g., 98%" id="stats-satisfaction">
+                    <input
+                      id="stats-satisfaction"
+                      type="text"
+                      placeholder="e.g., 98%"
+                      value={data.stats.satisfaction}
+                      onChange={(e) => setData((prev) => ({
+                        ...prev!,
+                        stats: { ...prev!.stats, satisfaction: e.target.value }
+                      }))}
+                      onFocus={() => setFocusedField('stats-satisfaction')}
+                      onBlur={() => setFocusedField(null)}
+                      style={ui.input(focusedField === 'stats-satisfaction', false)}
+                      ref={refCallbacks['stats-satisfaction']}
+                      maxLength={20}
+                    />
+                  </FormField>
+                  <FormField label="Fast Start" helpText="e.g., 48h" id="stats-fastStart">
+                    <input
+                      id="stats-fastStart"
+                      type="text"
+                      placeholder="e.g., 48h"
+                      value={data.stats.fastStart}
+                      onChange={(e) => setData((prev) => ({
+                        ...prev!,
+                        stats: { ...prev!.stats, fastStart: e.target.value }
+                      }))}
+                      onFocus={() => setFocusedField('stats-fastStart')}
+                      onBlur={() => setFocusedField(null)}
+                      style={ui.input(focusedField === 'stats-fastStart', false)}
+                      ref={refCallbacks['stats-fastStart']}
+                      maxLength={20}
+                    />
+                  </FormField>
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Trust Indicators" icon="🤝" isOpen={open.trust} onToggle={() => setOpen((prev) => ({ ...prev, trust: !prev.trust }))}>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '16px' }}>Consultation Indicator</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <FormField label="Time/Value" helpText="e.g., 30 min" id="trust-consultationTime">
+                      <input
+                        id="trust-consultationTime"
+                        type="text"
+                        placeholder="e.g., 30 min"
+                        value={data.trust.consultationTime}
+                        onChange={(e) => setData((prev) => ({
+                          ...prev!,
+                          trust: { ...prev!.trust, consultationTime: e.target.value }
+                        }))}
+                        onFocus={() => setFocusedField('trust-consultationTime')}
+                        onBlur={() => setFocusedField(null)}
+                        style={ui.input(focusedField === 'trust-consultationTime', false)}
+                        ref={refCallbacks['trust-consultationTime']}
+                        maxLength={20}
+                      />
+                    </FormField>
+                    <FormField label="Label" helpText="e.g., Free Consultation" id="trust-consultationLabel">
+                      <input
+                        id="trust-consultationLabel"
+                        type="text"
+                        placeholder="e.g., Free Consultation"
+                        value={data.trust.consultationLabel}
+                        onChange={(e) => setData((prev) => ({
+                          ...prev!,
+                          trust: { ...prev!.trust, consultationLabel: e.target.value }
+                        }))}
+                        onFocus={() => setFocusedField('trust-consultationLabel')}
+                        onBlur={() => setFocusedField(null)}
+                        style={ui.input(focusedField === 'trust-consultationLabel', false)}
+                        ref={refCallbacks['trust-consultationLabel']}
+                        maxLength={50}
+                      />
+                    </FormField>
+                  </div>
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '16px' }}>Response Time Indicator</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <FormField label="Time/Value" helpText="e.g., 24/7" id="trust-responseTime">
+                      <input
+                        id="trust-responseTime"
+                        type="text"
+                        placeholder="e.g., 24/7"
+                        value={data.trust.responseTime}
+                        onChange={(e) => setData((prev) => ({
+                          ...prev!,
+                          trust: { ...prev!.trust, responseTime: e.target.value }
+                        }))}
+                        onFocus={() => setFocusedField('trust-responseTime')}
+                        onBlur={() => setFocusedField(null)}
+                        style={ui.input(focusedField === 'trust-responseTime', false)}
+                        ref={refCallbacks['trust-responseTime']}
+                        maxLength={20}
+                      />
+                    </FormField>
+                    <FormField label="Label" helpText="e.g., Quick Response" id="trust-responseLabel">
+                      <input
+                        id="trust-responseLabel"
+                        type="text"
+                        placeholder="e.g., Quick Response"
+                        value={data.trust.responseLabel}
+                        onChange={(e) => setData((prev) => ({
+                          ...prev!,
+                          trust: { ...prev!.trust, responseLabel: e.target.value }
+                        }))}
+                        onFocus={() => setFocusedField('trust-responseLabel')}
+                        onBlur={() => setFocusedField(null)}
+                        style={ui.input(focusedField === 'trust-responseLabel', false)}
+                        ref={refCallbacks['trust-responseLabel']}
+                        maxLength={50}
+                      />
+                    </FormField>
+                  </div>
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '16px' }}>No Commitment Indicator</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <FormField label="Value" helpText="e.g., No Commitment" id="trust-noCommitment">
+                      <input
+                        id="trust-noCommitment"
+                        type="text"
+                        placeholder="e.g., No Commitment"
+                        value={data.trust.noCommitment}
+                        onChange={(e) => setData((prev) => ({
+                          ...prev!,
+                          trust: { ...prev!.trust, noCommitment: e.target.value }
+                        }))}
+                        onFocus={() => setFocusedField('trust-noCommitment')}
+                        onBlur={() => setFocusedField(null)}
+                        style={ui.input(focusedField === 'trust-noCommitment', false)}
+                        ref={refCallbacks['trust-noCommitment']}
+                        maxLength={50}
+                      />
+                    </FormField>
+                    <FormField label="Label" helpText="e.g., Cancel Anytime" id="trust-noCommitmentLabel">
+                      <input
+                        id="trust-noCommitmentLabel"
+                        type="text"
+                        placeholder="e.g., Cancel Anytime"
+                        value={data.trust.noCommitmentLabel}
+                        onChange={(e) => setData((prev) => ({
+                          ...prev!,
+                          trust: { ...prev!.trust, noCommitmentLabel: e.target.value }
+                        }))}
+                        onFocus={() => setFocusedField('trust-noCommitmentLabel')}
+                        onBlur={() => setFocusedField(null)}
+                        style={ui.input(focusedField === 'trust-noCommitmentLabel', false)}
+                        ref={refCallbacks['trust-noCommitmentLabel']}
+                        maxLength={50}
+                      />
+                    </FormField>
+                  </div>
+                </div>
+                <FormField label="Footer Text" helpText="Bottom reassurance text" id="trust-footer">
+                  <textarea
+                    id="trust-footer"
+                    placeholder="e.g., Trusted by businesses worldwide"
+                    value={data.trust.footer}
+                    onChange={(e) => setData((prev) => ({ ...prev!, trust: { ...prev!.trust, footer: e.target.value } }))}
+                    onFocus={() => setFocusedField('trust-footer')}
+                    onBlur={() => setFocusedField(null)}
+                    rows={3}
+                    style={ui.textarea(focusedField === 'trust-footer', false)}
+                    ref={refCallbacks['trust-footer']}
+                    maxLength={200}
+                  />
+                </FormField>
+              </SectionCard>
+
+              <SectionCard title="Call-to-Action Buttons" icon="🚀" isOpen={open.ctas} onToggle={() => setOpen((prev) => ({ ...prev, ctas: !prev.ctas }))}>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '16px' }}>Primary CTA Button</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <FormField
+                      label="Button Label"
+                      required
+                      error={errors.primaryLabel ? 'Required' : undefined}
+                      helpText="Primary button text"
+                      id="primaryLabel"
+                    >
+                      <input
+                        id="primaryLabel"
+                        type="text"
+                        placeholder="e.g., Book a Free Consultation"
+                        value={data.ctas.primaryLabel}
+                        onChange={(e) => setData((prev) => ({ ...prev!, ctas: { ...prev!.ctas, primaryLabel: e.target.value } }))}
+                        onFocus={() => setFocusedField('primaryLabel')}
+                        onBlur={() => setFocusedField(null)}
+                        style={ui.input(focusedField === 'primaryLabel', !!errors.primaryLabel)}
+                        ref={refCallbacks.primaryLabel}
+                        maxLength={50}
+                      />
+                    </FormField>
+                    <FormField
+                      label="Button Link"
+                      required
+                      error={!errors.primaryHref ? undefined : 'Required. Use /relative or http(s) URL'}
+                      helpText="URL or relative path"
+                      id="primaryHref"
+                    >
+                      <input
+                        id="primaryHref"
+                        type="text"
+                        placeholder="e.g., /book-meeting"
+                        value={data.ctas.primaryHref}
+                        onChange={(e) => setData((prev) => ({ ...prev!, ctas: { ...prev!.ctas, primaryHref: e.target.value } }))}
+                        onFocus={() => setFocusedField('primaryHref')}
+                        onBlur={() => setFocusedField(null)}
+                        style={ui.input(focusedField === 'primaryHref', !!errors.primaryHref)}
+                        ref={refCallbacks.primaryHref}
+                        maxLength={200}
+                      />
+                    </FormField>
+                  </div>
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '16px' }}>Secondary CTA Button</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <FormField label="Button Label" helpText="Secondary button text (optional)" id="secondaryLabel">
+                      <input
+                        id="secondaryLabel"
+                        type="text"
+                        placeholder="e.g., Chat on WhatsApp"
+                        value={data.ctas.secondaryLabel}
+                        onChange={(e) => setData((prev) => ({ ...prev!, ctas: { ...prev!.ctas, secondaryLabel: e.target.value } }))}
+                        onFocus={() => setFocusedField('secondaryLabel')}
+                        onBlur={() => setFocusedField(null)}
+                        style={ui.input(focusedField === 'secondaryLabel', false)}
+                        ref={refCallbacks.secondaryLabel}
+                        maxLength={50}
+                      />
+                    </FormField>
+                    <FormField
+                      label="Button Link"
+                      error={errors.secondaryHref ? 'Invalid URL' : undefined}
+                      helpText="Leave blank for auto-WhatsApp link"
+                      id="secondaryHref"
+                    >
+                      <input
+                        id="secondaryHref"
+                        type="text"
+                        placeholder="e.g., https://wa.me/1234567890 or leave blank"
+                        value={data.ctas.secondaryHref}
+                        onChange={(e) => setData((prev) => ({ ...prev!, ctas: { ...prev!.ctas, secondaryHref: e.target.value } }))}
+                        onFocus={() => setFocusedField('secondaryHref')}
+                        onBlur={() => setFocusedField(null)}
+                        style={ui.input(focusedField === 'secondaryHref', !!errors.secondaryHref)}
+                        ref={refCallbacks['secondaryHref']}
+                        maxLength={200}
+                      />
+                    </FormField>
+                  </div>
+                </div>
+                <FormField
+                  label="WhatsApp Number"
+                  error={errors.whatsAppNumber ? 'Digits only, 6-15 length' : undefined}
+                  helpText={!errors.whatsAppNumber ? 'For auto-WhatsApp link (e.g., 15551234567)' : undefined}
+                  id="whatsAppNumber"
+                >
+                  <input
+                    id="whatsAppNumber"
+                    type="text"
+                    placeholder="Digits only, e.g., 15551234567"
+                    value={data.whatsAppNumber}
+                    onChange={(e) => setData((prev) => ({ ...prev!, whatsAppNumber: e.target.value }))}
+                    onFocus={() => setFocusedField('whatsAppNumber')}
+                    onBlur={() => setFocusedField(null)}
+                    style={ui.input(focusedField === 'whatsAppNumber', !!errors.whatsAppNumber)}
+                    ref={refCallbacks.whatsAppNumber}
+                    maxLength={15}
+                  />
+                </FormField>
+              </SectionCard>
+            </div>
+
+            {/* Live Preview (deferred for perf) */}
+            {isWide && deferredData && (
+              <div style={ui.asideGrid}>
+                <div style={ui.card}>
+                  <div style={{ ...ui.sectionHeader, borderBottom: 'none', marginBottom: 0, paddingBottom: 0 }}>
+                    <div style={ui.sectionTitle}>🎯 Live Preview</div>
+                  </div>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Match page theme
+                    borderRadius: '16px',
+                    padding: '24px',
+                    marginTop: '16px',
+                    color: 'white'
+                  }}>
+                    {deferredData.badge.trim() && (
+                      <div style={ui.previewBadge}>{deferredData.badge.trim()}</div>
+                    )}
+                    <div style={{ marginBottom: '20px' }}>
+                      <div style={{
+                        fontSize: '28px',
+                        fontWeight: 800,
+                        lineHeight: 1.1,
+                        marginBottom: '8px',
+                        textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}>
+                        {deferredData.headlineLine1.trim() || 'Headline Line 1'}
+                      </div>
+                      <div style={{
+                        fontSize: '28px',
+                        fontWeight: 800,
+                        lineHeight: 1.1,
+                        marginBottom: '12px',
+                        textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}>
+                        {deferredData.headlineLine2.trim() || 'Headline Line 2'}
+                      </div>
+                      {deferredData.subheading.trim() && (
+                        <div style={{
+                          fontSize: '16px',
+                          opacity: 0.95,
+                          lineHeight: 1.5,
+                          fontWeight: 600
+                        }}>
+                          {deferredData.subheading.trim()}
+                        </div>
+                      )}
+                    </div>
+                    {deferredData.benefits.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+                        {deferredData.benefits.slice(0, 4).map((b, i) => (
+                          <div key={i} style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: 'rgba(255, 255, 255, 0.15)',
+                            borderRadius: '20px',
+                            padding: '6px 12px',
+                            border: '1px solid rgba(255, 255, 255, 0.3)',
+                            fontSize: '13px',
+                            fontWeight: 600
+                          }}>
+                            <span>✓</span>
+                            {b}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                      <a
+                        href={deferredData.ctas.primaryHref || '#'}
+                        style={ui.previewCtaPrimary}
+                        aria-label="Primary CTA Preview"
+                      >
+                        {deferredData.ctas.primaryLabel || 'Primary CTA'}
+                      </a>
+                      <a
+                        href={
+                          deferredData.ctas.secondaryHref ||
+                          (deferredData.whatsAppNumber ? `https://wa.me/${deferredData.whatsAppNumber}` : '#')
+                        }
+                        style={{
+                          ...ui.previewCtaSecondary,
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          borderColor: 'rgba(255, 255, 255, 0.3)',
+                          color: 'white'
+                        }}
+                        aria-label="Secondary CTA Preview"
+                      >
+                        {deferredData.ctas.secondaryLabel || 'Secondary CTA'}
+                      </a>
+                    </div>
+                    {/* Stats */}
+                    {(deferredData.stats.activeClients || deferredData.stats.avgRoi || deferredData.stats.satisfaction || deferredData.stats.fastStart) && (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '12px',
+                        marginBottom: '16px',
+                        paddingTop: '16px',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.2)'
+                      }}>
+                        {deferredData.stats.activeClients && (
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '20px', fontWeight: 700 }}>{deferredData.stats.activeClients}</div>
+                            <div style={{ fontSize: '11px', opacity: 0.9 }}>Active Clients</div>
+                          </div>
+                        )}
+                        {deferredData.stats.avgRoi && (
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '20px', fontWeight: 700 }}>{deferredData.stats.avgRoi}</div>
+                            <div style={{ fontSize: '11px', opacity: 0.9 }}>Avg ROI</div>
+                          </div>
+                        )}
+                        {deferredData.stats.satisfaction && (
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '20px', fontWeight: 700 }}>{deferredData.stats.satisfaction}</div>
+                            <div style={{ fontSize: '11px', opacity: 0.9 }}>Satisfaction</div>
+                          </div>
+                        )}
+                        {deferredData.stats.fastStart && (
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '20px', fontWeight: 700 }}>{deferredData.stats.fastStart}</div>
+                            <div style={{ fontSize: '11px', opacity: 0.9 }}>Fast Start</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Trust */}
+                    {(
+                      deferredData.trust.consultationTime ||
+                      deferredData.trust.responseTime ||
+                      deferredData.trust.noCommitment ||
+                      deferredData.trust.footer
+                    ) && (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        paddingTop: '16px',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.2)'
+                      }}>
+                        {deferredData.trust.consultationTime && (
+                          <div style={{ fontSize: '13px' }}>
+                            <span style={{ fontWeight: 700 }}>{deferredData.trust.consultationTime}</span>
+                            {deferredData.trust.consultationLabel && <span style={{ opacity: 0.9 }}> - {deferredData.trust.consultationLabel}</span>}
+                          </div>
+                        )}
+                        {deferredData.trust.responseTime && (
+                          <div style={{ fontSize: '13px' }}>
+                            <span style={{ fontWeight: 700 }}>{deferredData.trust.responseTime}</span>
+                            {deferredData.trust.responseLabel && <span style={{ opacity: 0.9 }}> - {deferredData.trust.responseLabel}</span>}
+                          </div>
+                        )}
+                        {deferredData.trust.noCommitment && (
+                          <div style={{ fontSize: '13px' }}>
+                            <span style={{ fontWeight: 700 }}>{deferredData.trust.noCommitment}</span>
+                            {deferredData.trust.noCommitmentLabel && <span style={{ opacity: 0.9 }}> - {deferredData.trust.noCommitmentLabel}</span>}
+                          </div>
+                        )}
+                        {deferredData.trust.footer && (
+                          <div style={{ opacity: 0.9, fontSize: '12px', marginTop: '8px', fontStyle: 'italic' }}>
+                            {deferredData.trust.footer}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
-            <div className="flex items-center gap-3 ml-auto">
+          </div>
+        )}
+
+        {/* Action Bar */}
+        {data && (
+          <div style={{ ...ui.card, marginTop: '24px', position: 'sticky', bottom: '24px', zIndex: 100 }}>
+            {isDirty && (
+              <div style={{
+                marginBottom: '12px',
+                fontSize: '14px',
+                color: '#92400e',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <div style={{ width: '12px', height: '12px', background: '#f59e0b', borderRadius: '50%' }} />
+                You have unsaved changes
+              </div>
+            )}
+            {hasErrors && (
+              <div style={{
+                marginBottom: '12px',
+                fontSize: '14px',
+                color: '#dc2626',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <div style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '50%' }} />
+                Fix errors before saving
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={ui.btnRow}>
+                <button
+                  type="button"
+                  onClick={onRevert}
+                  disabled={!isDirty}
+                  style={{
+                    ...ui.btn,
+                    opacity: isDirty ? 1 : 0.5,
+                    cursor: isDirty ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  ↩️ Revert
+                </button>
+              </div>
               <button
-                onClick={() => setData(original ? structuredClone(original) : data)}
-                disabled={!isDirty}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-                  isDirty
-                    ? 'bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/60 hover:border-slate-500/60 text-slate-300 cursor-pointer'
-                    : 'bg-slate-800/30 border border-slate-700/30 text-slate-600 cursor-not-allowed'
-                }`}
-              >
-                <RotateCcw className="w-4 h-4" />
-                Revert
-              </button>
-              <button
+                type="button"
                 onClick={onSave}
                 disabled={!hasToken || !isDirty || saving || hasErrors}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
-                  hasToken && isDirty && !saving && !hasErrors
-                    ? 'bg-gradient-to-r from-gold to-yellow-500 hover:from-gold/90 hover:to-yellow-500/90 text-slate-900 shadow-lg shadow-gold/20 hover:shadow-gold/30 cursor-pointer'
-                    : 'bg-slate-700/30 border border-slate-600/30 text-slate-600 cursor-not-allowed'
-                }`}
+                style={{
+                  ...ui.btnPrimary,
+                  opacity: (!hasToken || !isDirty || saving || hasErrors) ? 0.5 : 1,
+                  cursor: (!hasToken || !isDirty || saving || hasErrors) ? 'not-allowed' : 'pointer'
+                }}
+                aria-label="Save changes"
               >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Save Changes
-                  </>
-                )}
+                {saving ? '💾 Saving...' : '💾 Save Changes'}
+                {!saving && isDirty && !hasErrors && ' (Ctrl/Cmd + S)'}
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed right-6 bottom-6 z-50 animate-in slide-in-from-right">
-          <div className={`rounded-2xl p-4 shadow-2xl backdrop-blur-xl border ${
-            toast.type === 'success'
-              ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/30'
-              : 'bg-gradient-to-r from-red-500/20 to-rose-500/20 border-red-500/30'
-          }`}>
-            <div className="flex items-center gap-3">
-              {toast.type === 'success' ? (
-                <CheckCircle2 className="w-5 h-5 text-green-400" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-red-400" />
-              )}
-              <span className={`font-semibold ${toast.type === 'success' ? 'text-green-300' : 'text-red-300'}`}>
-                {toast.message}
-              </span>
-              <button
-                onClick={() => setToast(null)}
-                className="ml-4 text-slate-400 hover:text-white transition-colors"
-              >
-                ×
-              </button>
-            </div>
+        {/* Toast */}
+        {toast && (
+          <div style={{ ...ui.toast, borderLeftColor: toast.type === 'error' ? '#ef4444' : '#10b981' }}>
+            <span>{toast.message}</span>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              style={{
+                background: 'transparent',
+                color: '#6b7280',
+                border: 0,
+                cursor: 'pointer',
+                fontSize: '20px',
+                padding: 0,
+                width: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '4px'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0, 0, 0, 0.05)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              aria-label="Close toast"
+            >
+              ×
+            </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
