@@ -43,7 +43,7 @@ jobs:
             
             # Restart application with PM2
             echo "🔄 Restarting application..."
-            pm2 restart vaa-backend || pm2 start ecosystem.config.js
+            pm2 restart vaa-backend || pm2 start ecosystem.config.cjs
             
             # Save PM2 configuration
             pm2 save
