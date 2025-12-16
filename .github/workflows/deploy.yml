@@ -1,0 +1,74 @@
+name: Deploy Backend to VPS
+
+on:
+  push:
+    branches:
+      - mubii
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Hostinger VPS
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
+            echo "🚀 Starting deployment..."
+            
+            # Navigate to application directory
+            cd /var/www/vaa-backend || exit 1
+            
+            # Pull latest changes
+            echo "📥 Pulling latest code..."
+            git pull origin mubii
+            
+            # Navigate to backend directory
+            cd backend
+            
+            # Install dependencies
+            echo "📦 Installing dependencies..."
+            npm ci --production
+            
+            # Restart application with PM2
+            echo "🔄 Restarting application..."
+            pm2 restart vaa-backend || pm2 start ecosystem.config.cjs
+            
+            # Save PM2 configuration
+            pm2 save
+            
+            # Wait for application to start
+            sleep 5
+            
+            # Health check
+            echo "🏥 Running health check..."
+            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5001/health)
+            
+            if [ "$HEALTH_STATUS" -eq 200 ]; then
+              echo "✅ Deployment successful! Application is healthy."
+              pm2 list
+            else
+              echo "❌ Deployment failed! Health check returned status: $HEALTH_STATUS"
+              pm2 logs vaa-backend --lines 50
+              exit 1
+            fi
+
+      - name: Deployment Status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Deployment completed successfully"
+          else
+            echo "❌ Deployment failed"
+          fi
