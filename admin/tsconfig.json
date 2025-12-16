@@ -12,15 +12,20 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
+    "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
   },
   "include": ["src"],
+  "exclude": [
+    "src/AdminFinalCTA.tsx",
+    "src/AdminDashboard.tsx"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
 

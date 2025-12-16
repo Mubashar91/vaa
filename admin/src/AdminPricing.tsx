@@ -213,6 +213,23 @@ export default function AdminPricing() {
     setNewPlan({ ...newPlan, features: arr });
   };
 
+  // Edit modal feature helpers
+  const addEditFeature = () => {
+    const v = editFeatureInput.trim();
+    if (!v || !editingPlan) return;
+    const current = editingPlan.features || [];
+    if (current.includes(v)) { setEditFeatureInput(''); return; }
+    setEditingPlan({ ...editingPlan, features: [...current, v] });
+    setEditFeatureInput('');
+  };
+
+  const removeEditFeature = (idx: number) => {
+    if (!editingPlan) return;
+    const arr = (editingPlan.features || []).slice();
+    arr.splice(idx, 1);
+    setEditingPlan({ ...editingPlan, features: arr });
+  };
+
   const validateCore = (p: Pick<Plan, 'name'|'hours'|'price'|'setupFee'>) => {
     if (!p.name.trim()) return 'Name is required';
     if (!p.hours.trim()) return 'Hours is required';

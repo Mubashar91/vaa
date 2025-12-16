@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import AdminDashboard from "./AdminDashboard";
+import AdminShell from "./AdminShell";
 import AdminPricing from "./AdminPricing";
 import AdminHowItWorks from "./AdminHowItWorks";
 import AdminFAQ from "./AdminFAQ";
@@ -10,7 +10,6 @@ import AdminCaseStudy from "./AdminCaseStudy";
 import AdminHero from "./AdminHero";
 import AdminWhyChooseUs from "./AdminWhyChooseUs";
 import AdminFooter from "./AdminFooter";
-import AdminFinalCTA from "./AdminFinalCTA";
 import AdminLogin from "./auth/AdminLogin";
 import RequireAdmin from "./auth/RequireAdmin";
 
@@ -23,7 +22,7 @@ const App = () => (
         path="/"
         element={
           <RequireAdmin>
-            <AdminDashboard />
+            <AdminShell />
           </RequireAdmin>
         }
       >
@@ -38,7 +37,6 @@ const App = () => (
         <Route path="hero" element={<AdminHero />} />
         <Route path="why-choose-us" element={<AdminWhyChooseUs />} />
         <Route path="footer" element={<AdminFooter />} />
-        <Route path="final-cta" element={<AdminFinalCTA />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

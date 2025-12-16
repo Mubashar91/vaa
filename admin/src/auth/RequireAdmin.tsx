@@ -3,7 +3,7 @@ import { useLocation, Navigate } from 'react-router-dom';
 
 const API_BASE = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE || 'http://localhost:5001';
 
-export default function RequireAdmin({ children }: { children: JSX.Element }) {
+export default function RequireAdmin({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [status, setStatus] = useState<'checking' | 'ok' | 'redirect'>('checking');
 

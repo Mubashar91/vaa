@@ -13,6 +13,8 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
-  base: process.env.NODE_ENV === 'production' ? '/admin/' : '/',
+  // Allow deploying under a separate domain (root path) or under a subpath like /admin/
+  // Use env VITE_BASE_PATH to override. Example: VITE_BASE_PATH='/' for separate domain
+  base: process.env.VITE_BASE_PATH || (process.env.NODE_ENV === 'production' ? '/admin/' : '/'),
 })
 

@@ -18,6 +18,8 @@ interface BlogPost {
   category: string;
   image: string;
   charts?: any;
+  order?: number;
+  id?: number | string;
 }
 
 
