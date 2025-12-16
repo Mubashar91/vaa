@@ -89,10 +89,11 @@ echo -e "${YELLOW}⚙️  Creating .env file...${NC}"
 if [ ! -f .env ]; then
     cat > .env << EOF
 PORT=5001
-NODE_ENV=production
-MONGO_URI=your-mongodb-connection-string
-ADMIN_TOKEN=your-secure-admin-token
-CORS_ORIGIN=https://your-frontend-domain.com
+MONGO_URI=mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0
+MONGO_DB=donva
+ADMIN_TOKEN=dev-admin-token
+CORS_ORIGIN=*
+# CORS_ORIGIN=http://localhost:5173
 EOF
     echo -e "${RED}⚠️  IMPORTANT: Edit the .env file with your actual values!${NC}"
     echo "   Run: nano $APP_DIR/backend/.env"
