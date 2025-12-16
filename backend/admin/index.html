@@ -1,21 +1,65 @@
 <!doctype html>
 <html>
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pricing Admin</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
-    header { display:flex; gap:12px; align-items:center; margin-bottom: 16px; }
-    input, select, button, textarea { padding:8px; font-size:14px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 16px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
-    th { background: #f6f6f6; }
-    .row { display:flex; gap:8px; flex-wrap:wrap; }
-    .muted { color:#666 }
-    details { margin-top: 8px; }
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      margin: 24px;
+    }
+
+    header {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    input,
+    select,
+    button,
+    textarea {
+      padding: 8px;
+      font-size: 14px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 16px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f6f6f6;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .muted {
+      color: #666
+    }
+
+    details {
+      margin-top: 8px;
+    }
   </style>
 </head>
+
 <body>
   <header>
     <h2>Pricing Admin</h2>
@@ -75,8 +119,8 @@
       return token ? { Authorization: `Bearer ${token}` } : {};
     }
 
-    function featureListToText(list){ return (list||[]).join('\n'); }
-    function textToFeatureList(text){ return text.split('\n').map(s=>s.trim()).filter(Boolean); }
+    function featureListToText(list) { return (list || []).join('\n'); }
+    function textToFeatureList(text) { return text.split('\n').map(s => s.trim()).filter(Boolean); }
 
     async function load() {
       const lang = document.getElementById('lang').value;
@@ -93,13 +137,13 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${p.planKey}</td>
-          <td contenteditable data-key="name">${p.name||''}</td>
-          <td contenteditable data-key="hours">${p.hours||''}</td>
-          <td contenteditable data-key="price">${p.price||0}</td>
-          <td contenteditable data-key="setupFee">${p.setupFee||0}</td>
-          <td contenteditable data-key="badge">${p.badge||''}</td>
+          <td contenteditable data-key="name">${p.name || ''}</td>
+          <td contenteditable data-key="hours">${p.hours || ''}</td>
+          <td contenteditable data-key="price">${p.price || 0}</td>
+          <td contenteditable data-key="setupFee">${p.setupFee || 0}</td>
+          <td contenteditable data-key="badge">${p.badge || ''}</td>
           <td contenteditable data-key="features">${featureListToText(p.features)}</td>
-          <td><input type="checkbox" data-key="highlighted" ${p.highlighted? 'checked':''}></td>
+          <td><input type="checkbox" data-key="highlighted" ${p.highlighted ? 'checked' : ''}></td>
           <td>
             <button data-action="save">Save</button>
             <button data-action="delete">Delete</button>
@@ -157,7 +201,7 @@
         highlighted: document.getElementById('new_highlighted').checked
       };
       if (!plan.planKey) { alert('planKey required'); return; }
-      const allowed = ['starter','professional','enterprise'];
+      const allowed = ['starter', 'professional', 'enterprise'];
       if (!allowed.includes(plan.planKey)) { alert('planKey must be one of: ' + allowed.join(', ')); return; }
       if (!plan.name) { alert('name is required'); return; }
       if (!plan.hours) { alert('hours is required'); return; }
@@ -190,16 +234,16 @@
         if (stored) {
           document.getElementById('token').value = stored;
         }
-      } catch (_) {}
+      } catch (_) { }
     })();
 
     document.getElementById('token').addEventListener('input', (e) => {
       try {
         localStorage.setItem('adminToken', e.target.value.trim());
-      } catch (_) {}
+      } catch (_) { }
     });
 
-    // Auto-load if a token is present
+    // Auto-load if a token is present.
     window.addEventListener('DOMContentLoaded', () => {
       const tokenVal = document.getElementById('token').value.trim();
       if (tokenVal) {
@@ -208,4 +252,5 @@
     });
   </script>
 </body>
+
 </html>
