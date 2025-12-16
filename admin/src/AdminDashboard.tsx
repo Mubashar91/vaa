@@ -163,6 +163,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
+<<<<<<< HEAD
       {/* Mobile sidebar drawer */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
@@ -223,6 +224,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
+=======
+>>>>>>> 52db72a9ddcf09cff259f0de5b5886ccb951fe0f
       <div className="relative w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Navigation Cards */}
         {location.pathname === '/' || location.pathname === '' ? (
