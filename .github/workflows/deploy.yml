@@ -31,12 +31,33 @@ jobs:
             # Navigate to application directory
             cd /var/www/vaa-backend
             
-            # Pull latest changes
-            echo "📥 Pulling latest code..."
-            git pull origin mubii
-            
             # Navigate to backend directory
             cd backend
+            
+            # Backup .env if it exists (because git pull might delete it if we untrack it)
+            if [ -f .env ]; then
+              echo "💾 Backing up .env..."
+              cp .env .env.backup
+            fi
+            
+            # Navigate back to root to pull
+            cd ..
+
+            # Pull latest changes
+            echo "📥 Pulling latest code..."
+            # Using stash to handle any potential local conflict with .env before it's untracked
+            git stash
+            git pull origin mubii
+            git stash pop || true # apply stash, ignore if fails (likely conflict on .env which we don't care about if we have backup)
+            
+            # Navigate back to backend
+            cd backend
+
+            # Restore .env
+            if [ -f .env.backup ]; then
+              echo "♻️  Restoring .env..."
+              mv .env.backup .env
+            fi
             
             # Install dependencies
             echo "📦 Installing dependencies..."
