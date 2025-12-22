@@ -9,5 +9,9 @@ export const tenants = {
     "donva": {
         uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
         dbName: "donva"
+    },
+    "seo": {
+        uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
+        dbName: "seo"
     }
 };
