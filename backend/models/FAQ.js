@@ -13,5 +13,5 @@ const FAQSchema = new mongoose.Schema(
 // Ensure unique order per language
 FAQSchema.index({ lang: 1, order: 1 }, { unique: true });
 
-export default mongoose.models.FAQ || mongoose.model('FAQ', FAQSchema);
+export default FAQSchema;
 

@@ -11,5 +11,5 @@ const WhyChooseUsSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.models.WhyChooseUs || mongoose.model('WhyChooseUs', WhyChooseUsSchema);
+export default WhyChooseUsSchema;
 

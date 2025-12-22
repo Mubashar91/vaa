@@ -17,4 +17,4 @@ const PlanSchema = new mongoose.Schema(
 
 PlanSchema.index({ lang: 1, planKey: 1 }, { unique: true });
 
-export default mongoose.models.Plan || mongoose.model('Plan', PlanSchema);
+export default PlanSchema;

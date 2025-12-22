@@ -36,5 +36,4 @@ const FinalCTASchema = new mongoose.Schema(
 
 FinalCTASchema.index({ lang: 1 }, { unique: true });
 
-const FinalCTA = mongoose.model('FinalCTA', FinalCTASchema);
-export default FinalCTA;
+export default FinalCTASchema;

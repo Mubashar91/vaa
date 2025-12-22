@@ -1,4 +1,5 @@
-import Admin from '../models/Admin.js';
+import AdminSchema from '../models/Admin.js';
+import { getTenantModel } from '../utils/tenantManager.js';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -12,6 +13,7 @@ export async function signup(req, res) {
     }
 
     // Check if admin already exists
+    const Admin = await getTenantModel(req.tenantId, 'Admin', AdminSchema);
     const existing = await Admin.findOne({ email: email.toLowerCase() });
     if (existing) {
       return res.status(409).json({ error: 'Admin with this email already exists' });
@@ -55,6 +57,7 @@ export async function login(req, res) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
+    const Admin = await getTenantModel(req.tenantId, 'Admin', AdminSchema);
     const admin = await Admin.findOne({ email: email.toLowerCase() });
     if (!admin) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -105,8 +108,9 @@ export async function verifyToken(req, res) {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
+    const Admin = await getTenantModel(req.tenantId, 'Admin', AdminSchema);
     const admin = await Admin.findById(decoded.id).select('-password');
-    
+
     if (!admin || !admin.isActive) {
       return res.status(401).json({ error: 'Invalid token' });
     }

@@ -14,16 +14,16 @@ const AdminSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-AdminSchema.pre('save', async function(next) {
+AdminSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
 // Compare password method
-AdminSchema.methods.comparePassword = async function(candidatePassword) {
+AdminSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-export default mongoose.models.Admin || mongoose.model('Admin', AdminSchema);
+export default AdminSchema;
 

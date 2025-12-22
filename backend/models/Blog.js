@@ -21,5 +21,5 @@ const BlogSchema = new mongoose.Schema(
 // Ensure unique blogId per language
 BlogSchema.index({ lang: 1, blogId: 1 }, { unique: true });
 
-export default mongoose.models.Blog || mongoose.model('Blog', BlogSchema);
+export default BlogSchema;
 

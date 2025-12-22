@@ -1,19 +1,21 @@
 import jwt from 'jsonwebtoken';
-import Admin from '../models/Admin.js';
+import AdminSchema from '../models/Admin.js';
+import { getTenantModel } from '../utils/tenantManager.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 export async function adminAuth(req, res, next) {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
-    
+
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
+    const Admin = await getTenantModel(req.tenantId, 'Admin', AdminSchema);
     const admin = await Admin.findById(decoded.id).select('-password');
-    
+
     if (!admin || !admin.isActive) {
       return res.status(401).json({ error: 'Invalid or inactive account' });
     }

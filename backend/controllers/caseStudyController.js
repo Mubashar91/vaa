@@ -1,9 +1,11 @@
-import CaseStudy from '../models/CaseStudy.js';
+import CaseStudySchema from '../models/CaseStudy.js';
+import { getTenantModel } from '../utils/tenantManager.js';
 
 // Public: GET case studies by language
 export async function getCaseStudies(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const CaseStudy = await getTenantModel(req.tenantId, 'CaseStudy', CaseStudySchema);
     const caseStudies = await CaseStudy.find({ lang })
       .sort({ order: 1, caseStudyId: 1 })
       .lean();
@@ -18,6 +20,7 @@ export async function getCaseStudies(req, res) {
 export async function getCaseStudyById(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const CaseStudy = await getTenantModel(req.tenantId, 'CaseStudy', CaseStudySchema);
     const caseStudyId = parseInt(req.params.id);
     if (isNaN(caseStudyId)) {
       return res.status(400).json({ error: 'Invalid case study ID' });
@@ -35,6 +38,7 @@ export async function getCaseStudyById(req, res) {
 export async function listCaseStudies(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const CaseStudy = await getTenantModel(req.tenantId, 'CaseStudy', CaseStudySchema);
     const caseStudies = await CaseStudy.find({ lang })
       .sort({ order: 1, caseStudyId: 1 })
       .lean();
@@ -49,6 +53,7 @@ export async function listCaseStudies(req, res) {
 export async function createCaseStudy(req, res) {
   try {
     const { lang = 'en', caseStudy } = req.body || {};
+    const CaseStudy = await getTenantModel(req.tenantId, 'CaseStudy', CaseStudySchema);
     if (!caseStudy || caseStudy.caseStudyId === undefined) {
       return res.status(400).json({ error: 'caseStudy with caseStudyId required' });
     }
@@ -67,6 +72,7 @@ export async function createCaseStudy(req, res) {
 export async function updateCaseStudy(req, res) {
   try {
     const { lang = 'en', updates = {} } = req.body || {};
+    const CaseStudy = await getTenantModel(req.tenantId, 'CaseStudy', CaseStudySchema);
     const caseStudyId = parseInt(req.params.id);
     if (isNaN(caseStudyId)) {
       return res.status(400).json({ error: 'Invalid case study ID' });
@@ -88,6 +94,7 @@ export async function updateCaseStudy(req, res) {
 export async function deleteCaseStudy(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const CaseStudy = await getTenantModel(req.tenantId, 'CaseStudy', CaseStudySchema);
     const caseStudyId = parseInt(req.params.id);
     if (isNaN(caseStudyId)) {
       return res.status(400).json({ error: 'Invalid case study ID' });

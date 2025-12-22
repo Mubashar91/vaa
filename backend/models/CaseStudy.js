@@ -23,5 +23,5 @@ const CaseStudySchema = new mongoose.Schema(
 // Ensure unique caseStudyId per language
 CaseStudySchema.index({ lang: 1, caseStudyId: 1 }, { unique: true });
 
-export default mongoose.models.CaseStudy || mongoose.model('CaseStudy', CaseStudySchema);
+export default CaseStudySchema;
 

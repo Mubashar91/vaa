@@ -1,8 +1,10 @@
-import Footer from '../models/Footer.js';
+import FooterSchema from '../models/Footer.js';
+import { getTenantModel } from '../utils/tenantManager.js';
 
 // Public: GET footer by language
 export async function getFooter(req, res) {
   try {
+    const Footer = await getTenantModel(req.tenantId, 'Footer', FooterSchema);
     const lang = (req.query.lang || 'en').toLowerCase();
     const footer = await Footer.findOne({ lang }).lean();
     if (!footer) return res.status(404).json({ error: 'Footer not found' });
@@ -16,6 +18,7 @@ export async function getFooter(req, res) {
 // Admin: get footer
 export async function getFooterAdmin(req, res) {
   try {
+    const Footer = await getTenantModel(req.tenantId, 'Footer', FooterSchema);
     const lang = (req.query.lang || 'en').toLowerCase();
     const footer = await Footer.findOne({ lang }).lean();
     return res.json({ lang, footer });
@@ -29,6 +32,7 @@ export async function getFooterAdmin(req, res) {
 export async function upsertFooter(req, res) {
   try {
     const { lang = 'en', footer } = req.body || {};
+    const Footer = await getTenantModel(req.tenantId, 'Footer', FooterSchema);
     if (!footer) {
       return res.status(400).json({ error: 'footer data required' });
     }

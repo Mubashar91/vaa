@@ -1,9 +1,11 @@
-import FAQ from '../models/FAQ.js';
+import FAQSchema from '../models/FAQ.js';
+import { getTenantModel } from '../utils/tenantManager.js';
 
 // Public: GET FAQs by language
 export async function getFAQs(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const FAQ = await getTenantModel(req.tenantId, 'FAQ', FAQSchema);
     const faqs = await FAQ.find({ lang })
       .sort({ order: 1 })
       .lean();
@@ -18,6 +20,7 @@ export async function getFAQs(req, res) {
 export async function listFAQs(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const FAQ = await getTenantModel(req.tenantId, 'FAQ', FAQSchema);
     console.log(`📋 Fetching FAQs for language: ${lang}`);
     const faqs = await FAQ.find({ lang })
       .sort({ order: 1 })
@@ -34,13 +37,14 @@ export async function listFAQs(req, res) {
 export async function createFAQ(req, res) {
   try {
     const { lang = 'en', faq } = req.body || {};
+    const FAQ = await getTenantModel(req.tenantId, 'FAQ', FAQSchema);
     console.log('📝 Creating FAQ:', { lang, faq });
-    
+
     if (!faq || faq.order === undefined) {
       console.error('❌ Missing FAQ or order');
       return res.status(400).json({ error: 'faq with order required' });
     }
-    
+
     const created = await FAQ.create({ ...faq, lang: lang.toLowerCase() });
     console.log('✅ FAQ created:', created._id);
     return res.status(201).json({ message: 'created', faq: created });
@@ -58,6 +62,7 @@ export async function createFAQ(req, res) {
 export async function updateFAQ(req, res) {
   try {
     const { lang = 'en', updates = {} } = req.body || {};
+    const FAQ = await getTenantModel(req.tenantId, 'FAQ', FAQSchema);
     const order = parseInt(req.params.order);
     if (isNaN(order)) {
       return res.status(400).json({ error: 'Invalid order' });
@@ -79,6 +84,7 @@ export async function updateFAQ(req, res) {
 export async function deleteFAQ(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const FAQ = await getTenantModel(req.tenantId, 'FAQ', FAQSchema);
     const order = parseInt(req.params.order);
     if (isNaN(order)) {
       return res.status(400).json({ error: 'Invalid order' });

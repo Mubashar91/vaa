@@ -15,5 +15,5 @@ const ServiceSchema = new mongoose.Schema(
 // Ensure unique order per language
 ServiceSchema.index({ lang: 1, order: 1 }, { unique: true });
 
-export default mongoose.models.Service || mongoose.model('Service', ServiceSchema);
+export default ServiceSchema;
 

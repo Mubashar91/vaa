@@ -1,8 +1,10 @@
-import HowItWorksStep from '../models/HowItWorksStep.js';
+import HowItWorksStepSchema from '../models/HowItWorksStep.js';
+import { getTenantModel } from '../utils/tenantManager.js';
 
 // Public: GET how it works steps by language
 export async function getHowItWorks(req, res) {
   try {
+    const HowItWorksStep = await getTenantModel(req.tenantId, 'HowItWorksStep', HowItWorksStepSchema);
     const lang = (req.query.lang || 'en').toLowerCase();
     const steps = await HowItWorksStep.find({ lang })
       .sort({ stepNumber: 1 })
@@ -18,6 +20,7 @@ export async function getHowItWorks(req, res) {
 export async function listSteps(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const HowItWorksStep = await getTenantModel(req.tenantId, 'HowItWorksStep', HowItWorksStepSchema);
     const steps = await HowItWorksStep.find({ lang })
       .sort({ stepNumber: 1 })
       .lean();
@@ -32,6 +35,7 @@ export async function listSteps(req, res) {
 export async function createStep(req, res) {
   try {
     const { lang = 'en', step } = req.body || {};
+    const HowItWorksStep = await getTenantModel(req.tenantId, 'HowItWorksStep', HowItWorksStepSchema);
     if (!step || step.stepNumber === undefined) {
       return res.status(400).json({ error: 'step with stepNumber required' });
     }
@@ -50,6 +54,7 @@ export async function createStep(req, res) {
 export async function updateStep(req, res) {
   try {
     const { lang = 'en', updates = {} } = req.body || {};
+    const HowItWorksStep = await getTenantModel(req.tenantId, 'HowItWorksStep', HowItWorksStepSchema);
     const stepNumber = parseInt(req.params.stepNumber);
     if (isNaN(stepNumber)) {
       return res.status(400).json({ error: 'Invalid step number' });
@@ -71,6 +76,7 @@ export async function updateStep(req, res) {
 export async function deleteStep(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const HowItWorksStep = await getTenantModel(req.tenantId, 'HowItWorksStep', HowItWorksStepSchema);
     const stepNumber = parseInt(req.params.stepNumber);
     if (isNaN(stepNumber)) {
       return res.status(400).json({ error: 'Invalid step number' });

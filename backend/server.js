@@ -19,6 +19,7 @@ import footerRoutes from './routes/footerRoutes.js';
 import finalCtaRoutes from './routes/finalCtaRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import { tenantMiddleware } from './middleware/tenantMiddleware.js';
 
 dotenv.config();
 
@@ -62,6 +63,8 @@ app.use(cors({
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
+app.use(tenantMiddleware);
+
 app.use('/api/pricing', pricingRoutes);
 app.use('/api/how-it-works', howItWorksRoutes);
 app.use('/api/faq', faqRoutes);
@@ -93,12 +96,12 @@ async function start() {
   }
 
   try {
-    console.log('🔄 Connecting to MongoDB...');
-    await connectDB(process.env.MONGO_URI);
-    
+    // console.log('🔄 Connecting to MongoDB...');
+    // await connectDB(process.env.MONGO_URI);
+
     const corsOrigins = configuredOrigins.length ? configuredOrigins : ['(dev: localhost:517x)'];
     const adminTokenSet = !!process.env.ADMIN_TOKEN;
-    
+
     app.listen(PORT, '0.0.0.0', () => {
       console.log('✅ Server started successfully!');
       console.log(`🌐 Server listening on port ${PORT}`);
@@ -106,6 +109,7 @@ async function start() {
       console.log(`🔐 ADMIN_TOKEN configured: ${adminTokenSet ? 'yes' : 'no'}`);
       console.log(`🏥 Health check: http://0.0.0.0:${PORT}/health`);
     });
+
   } catch (err) {
     console.error('❌ Failed to start server:', err.message);
     console.error('Stack trace:', err.stack);

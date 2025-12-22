@@ -1,9 +1,11 @@
-import Plan from '../models/Plan.js';
+import PlanSchema from '../models/Plan.js';
+import { getTenantModel } from '../utils/tenantManager.js';
 
 // Public: GET pricing by language
 export async function getPricing(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const Plan = await getTenantModel(req.tenantId, 'Plan', PlanSchema);
     console.log(`📊 Fetching pricing for language: ${lang}`);
     const plans = await Plan.find({ lang }).sort({ planKey: 1 }).lean();
     console.log(`✅ Found ${plans.length} plans for ${lang}`);
@@ -21,6 +23,7 @@ export async function getPricing(req, res) {
 export async function listPlans(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const Plan = await getTenantModel(req.tenantId, 'Plan', PlanSchema);
     const plans = await Plan.find({ lang }).sort({ planKey: 1 }).lean();
     return res.json({ lang, plans });
   } catch (err) {
@@ -33,6 +36,7 @@ export async function listPlans(req, res) {
 export async function createPlan(req, res) {
   try {
     const { lang = 'en', plan } = req.body || {};
+    const Plan = await getTenantModel(req.tenantId, 'Plan', PlanSchema);
     if (!plan || !plan.planKey) return res.status(400).json({ error: 'plan with planKey required' });
     const created = await Plan.create({ ...plan, lang: lang.toLowerCase() });
     return res.status(201).json({ message: 'created', plan: created });
@@ -47,6 +51,7 @@ export async function createPlan(req, res) {
 export async function updatePlan(req, res) {
   try {
     const { lang = 'en', updates = {} } = req.body || {};
+    const Plan = await getTenantModel(req.tenantId, 'Plan', PlanSchema);
     const planKey = req.params.planKey;
     const updated = await Plan.findOneAndUpdate(
       { lang: lang.toLowerCase(), planKey },
@@ -65,6 +70,7 @@ export async function updatePlan(req, res) {
 export async function deletePlan(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const Plan = await getTenantModel(req.tenantId, 'Plan', PlanSchema);
     const planKey = req.params.planKey;
     const result = await Plan.deleteOne({ lang, planKey });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'not found' });

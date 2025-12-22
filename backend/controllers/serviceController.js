@@ -1,9 +1,11 @@
-import Service from '../models/Service.js';
+import ServiceSchema from '../models/Service.js';
+import { getTenantModel } from '../utils/tenantManager.js';
 
 // Public: GET services by language
 export async function getServices(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const Service = await getTenantModel(req.tenantId, 'Service', ServiceSchema);
 
     // Fetch services for the requested language, but be tolerant of older
     // documents that may have been saved with different casing.
@@ -37,6 +39,7 @@ export async function getServices(req, res) {
 export async function listServices(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const Service = await getTenantModel(req.tenantId, 'Service', ServiceSchema);
     const services = await Service.find({ lang })
       .sort({ order: 1 })
       .lean();
@@ -51,6 +54,7 @@ export async function listServices(req, res) {
 export async function createService(req, res) {
   try {
     const { lang = 'en', service } = req.body || {};
+    const Service = await getTenantModel(req.tenantId, 'Service', ServiceSchema);
     if (!service || service.order === undefined) {
       return res.status(400).json({ error: 'service with order required' });
     }
@@ -69,6 +73,7 @@ export async function createService(req, res) {
 export async function updateService(req, res) {
   try {
     const { lang = 'en', updates = {} } = req.body || {};
+    const Service = await getTenantModel(req.tenantId, 'Service', ServiceSchema);
     const order = parseInt(req.params.order);
     if (isNaN(order)) {
       return res.status(400).json({ error: 'Invalid order' });
@@ -90,6 +95,7 @@ export async function updateService(req, res) {
 export async function deleteService(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const Service = await getTenantModel(req.tenantId, 'Service', ServiceSchema);
     const order = parseInt(req.params.order);
     if (isNaN(order)) {
       return res.status(400).json({ error: 'Invalid order' });

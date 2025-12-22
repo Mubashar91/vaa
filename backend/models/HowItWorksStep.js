@@ -15,5 +15,5 @@ const HowItWorksStepSchema = new mongoose.Schema(
 // Ensure unique step number per language
 HowItWorksStepSchema.index({ lang: 1, stepNumber: 1 }, { unique: true });
 
-export default mongoose.models.HowItWorksStep || mongoose.model('HowItWorksStep', HowItWorksStepSchema);
+export default HowItWorksStepSchema;
 

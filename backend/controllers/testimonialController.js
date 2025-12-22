@@ -1,9 +1,11 @@
-import Testimonial from '../models/Testimonial.js';
+import TestimonialSchema from '../models/Testimonial.js';
+import { getTenantModel } from '../utils/tenantManager.js';
 
 // Public: GET testimonials by language
 export async function getTestimonials(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const Testimonial = await getTenantModel(req.tenantId, 'Testimonial', TestimonialSchema);
     const testimonials = await Testimonial.find({ lang })
       .sort({ order: 1 })
       .lean();
@@ -18,6 +20,7 @@ export async function getTestimonials(req, res) {
 export async function listTestimonials(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const Testimonial = await getTenantModel(req.tenantId, 'Testimonial', TestimonialSchema);
     const testimonials = await Testimonial.find({ lang })
       .sort({ order: 1 })
       .lean();
@@ -32,13 +35,14 @@ export async function listTestimonials(req, res) {
 export async function createTestimonial(req, res) {
   try {
     const { lang = 'en', testimonial } = req.body || {};
+    const Testimonial = await getTenantModel(req.tenantId, 'Testimonial', TestimonialSchema);
     console.log('📝 Creating testimonial:', { lang, testimonial });
-    
+
     if (!testimonial || testimonial.order === undefined) {
       console.error('❌ Missing testimonial or order');
       return res.status(400).json({ error: 'testimonial with order required' });
     }
-    
+
     const created = await Testimonial.create({ ...testimonial, lang: lang.toLowerCase() });
     console.log('✅ Testimonial created:', created._id);
     return res.status(201).json({ message: 'created', testimonial: created });
@@ -56,6 +60,7 @@ export async function createTestimonial(req, res) {
 export async function updateTestimonial(req, res) {
   try {
     const { lang = 'en', updates = {} } = req.body || {};
+    const Testimonial = await getTenantModel(req.tenantId, 'Testimonial', TestimonialSchema);
     const order = parseInt(req.params.order);
     if (isNaN(order)) {
       return res.status(400).json({ error: 'Invalid order' });
@@ -77,6 +82,7 @@ export async function updateTestimonial(req, res) {
 export async function deleteTestimonial(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
+    const Testimonial = await getTenantModel(req.tenantId, 'Testimonial', TestimonialSchema);
     const order = parseInt(req.params.order);
     if (isNaN(order)) {
       return res.status(400).json({ error: 'Invalid order' });

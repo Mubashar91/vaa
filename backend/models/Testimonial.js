@@ -15,5 +15,5 @@ const TestimonialSchema = new mongoose.Schema(
 // Ensure unique order per language
 TestimonialSchema.index({ lang: 1, order: 1 }, { unique: true });
 
-export default mongoose.models.Testimonial || mongoose.model('Testimonial', TestimonialSchema);
+export default TestimonialSchema;
 
