@@ -109,13 +109,34 @@ export async function getTenantConnection(tenantId) {
 export async function getTenantModel(tenantId, modelName, schema) {
     const cacheKey = `${tenantId}-${modelName}`;
 
-    if (modelPool.has(cacheKey)) {
+    // Optional: allow forcing a recompile of models to pick up latest schema changes
+    const forceRecompile = process.env.FORCE_MODEL_RECOMPILE === 'true';
+
+    if (!forceRecompile && modelPool.has(cacheKey)) {
         return modelPool.get(cacheKey);
     }
 
     const conn = await getTenantConnection(tenantId);
 
-    // Create model on the specific connection
+    if (forceRecompile) {
+        try {
+            // Clear any previously compiled model on this connection
+            if (conn.models && conn.models[modelName]) {
+                if (typeof conn.deleteModel === 'function') {
+                    conn.deleteModel(modelName);
+                } else {
+                    // Fallback: delete reference (older Mongoose)
+                    delete conn.models[modelName];
+                }
+            }
+            // Also clear our local model cache for this key
+            modelPool.delete(cacheKey);
+        } catch (e) {
+            console.warn(`[TenantManager] Failed to delete model ${modelName} for tenant ${tenantId}:`, e?.message || e);
+        }
+    }
+
+    // Create (or recreate) model on the specific connection
     const model = conn.model(modelName, schema);
 
     modelPool.set(cacheKey, model);
