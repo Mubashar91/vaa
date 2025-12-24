@@ -163,7 +163,6 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-<<<<<<< HEAD
       {/* Mobile sidebar drawer */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
@@ -220,12 +219,18 @@ export default function AdminDashboard() {
                 );
               })}
             </nav>
+            <div className="mt-4 pt-4 border-t border-slate-800/70">
+              <button
+                onClick={() => { setMobileOpen(false); handleLogout(); }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 text-red-300 rounded-xl transition-all text-sm font-semibold"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       )}
-
-=======
->>>>>>> 52db72a9ddcf09cff259f0de5b5886ccb951fe0f
       <div className="relative w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Navigation Cards */}
         {location.pathname === '/' || location.pathname === '' ? (
@@ -503,6 +508,15 @@ export default function AdminDashboard() {
                       );
                     })}
                   </nav>
+                  <div className="mt-4 pt-4 border-t border-slate-700/60">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 text-red-300 rounded-xl transition-all text-sm font-semibold"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </button>
+                  </div>
                 </div>
               </aside>
 

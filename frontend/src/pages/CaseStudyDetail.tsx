@@ -214,7 +214,7 @@ const CaseStudyDetail = () => {
                 {t("caseStudies.detail.theChallenge")}
               </h2>
               <div className="bg-card border border-border rounded-lg p-5 sm:p-6">
-                <p className="text-base text-muted-foreground leading-relaxed">
+                <p className="text-base text-muted-foreground leading-relaxed whitespace-pre-line break-words">
                   {caseStudy.challenge}
                 </p>
               </div>
@@ -226,7 +226,7 @@ const CaseStudyDetail = () => {
                 {t("caseStudies.detail.theSolution")}
               </h2>
               <div className="bg-card border border-border rounded-lg p-5 sm:p-6">
-                <p className="text-base text-muted-foreground leading-relaxed">
+                <p className="text-base text-muted-foreground leading-relaxed whitespace-pre-line break-words">
                   {caseStudy.solution}
                 </p>
               </div>

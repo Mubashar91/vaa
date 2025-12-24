@@ -7,6 +7,19 @@ const BlogSchema = new mongoose.Schema(
     title: { type: String, required: true },
     excerpt: { type: String, required: true },
     content: { type: String, required: true }, // HTML content
+    // Optional structured sections: stored alongside content for flexibility
+    sections: {
+      type: [
+        new mongoose.Schema(
+          {
+            heading: { type: String, default: '' },
+            details: { type: String, default: '' },
+          },
+          { _id: false }
+        )
+      ],
+      default: undefined,
+    },
     author: { type: String, required: true },
     date: { type: String, required: true },
     readTime: { type: String, required: true },

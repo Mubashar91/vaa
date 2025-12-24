@@ -30,6 +30,8 @@ type BlogChartConfig =
   | (BaseChartConfig & { type: "radar"; data: DataPoint[]; angleKey: string; series: ChartSeries[] })
   | (BaseChartConfig & { type: "bar" | "line" | "area"; data: DataPoint[]; xKey: string; series: ChartSeries[] } & AxisFormatters);
 
+interface Section { heading: string; details: string }
+
 interface BlogPost {
   id: number;
   title: string;
@@ -41,6 +43,7 @@ interface BlogPost {
   category: string;
   image: string;
   charts?: BlogChartConfig[];
+  sections?: Section[];
 }
 
 // Chart data for different blog posts
@@ -143,6 +146,7 @@ const BlogDetail = () => {
             category: enData.blog.category,
             image: enData.blog.image,
             charts: enData.blog.charts,
+            sections: enData.blog.sections,
           };
           setPost(blogPost);
         }
@@ -160,6 +164,7 @@ const BlogDetail = () => {
             category: deData.blog.category,
             image: deData.blog.image,
             charts: deData.blog.charts,
+            sections: deData.blog.sections,
           };
           setDePost(blogPost);
         }
@@ -179,6 +184,7 @@ const BlogDetail = () => {
             category: b.category,
             image: b.image,
             charts: b.charts,
+            sections: b.sections,
           })) : [];
           setAllPosts(allBlogs);
         }
@@ -538,7 +544,31 @@ const BlogDetail = () => {
                 [&_li>strong]:text-amber-500
                 [&_br]:my-2"
             >
-              <div dangerouslySetInnerHTML={{ __html: (dePost?.content ?? currentPost.content) }} />
+              {(() => {
+                const postToRender = (lang === 'de' && dePost) ? dePost : currentPost;
+                const sections = postToRender.sections || [];
+                if (sections.length > 0) {
+                  return (
+                    <div>
+                      {sections.map((s, idx) => (
+                        <div key={idx}>
+                          {s.heading ? <h2>{s.heading}</h2> : null}
+                          {s.details
+                            ? s.details
+                                .split(/\n\n+/)
+                                .map((para, pIdx) => (
+                                  <p key={pIdx} className="whitespace-pre-line">
+                                    {para}
+                                  </p>
+                                ))
+                            : null}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+                return <div dangerouslySetInnerHTML={{ __html: postToRender.content }} />;
+              })()}
             </motion.div>
 
             {/* Prev / Next navigation */}

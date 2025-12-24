@@ -20,6 +20,7 @@ interface BlogPost {
   charts?: any;
   order?: number;
   id?: number | string;
+  sections?: { heading: string; details: string }[];
 }
 
 

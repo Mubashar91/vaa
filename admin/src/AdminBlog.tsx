@@ -15,7 +15,10 @@ interface Blog {
   image: string;
   charts?: any;
   order: number;
+  sections?: Section[];
 }
+
+type Section = { heading: string; details: string };
 
 const API_BASE =
   ((import.meta as unknown) as { env?: Record<string, string> }).env?.VITE_API_BASE ||
@@ -51,6 +54,7 @@ export default function AdminBlog() {
   // Modal edit state similar to other admin pages
   const [editTarget, setEditTarget] = useState<Blog | null>(null);
   const [editingBlog, setEditingBlog] = useState<Blog | null>(null);
+  const [editingSections, setEditingSections] = useState<Section[]>([]);
 
   const isDirty = useCallback((idx: number) => {
     if (!originalBlogs[idx]) return true;
@@ -150,6 +154,7 @@ export default function AdminBlog() {
       image: b.image,
       charts: b.charts,
       order: b.order,
+      sections: b.sections,
     };
     const url = `${API_BASE}/api/admin/blogs/${b.blogId}`;
     setSavingId(b.blogId);
@@ -178,6 +183,23 @@ export default function AdminBlog() {
   const [newBlog, setNewBlog] = useState<Blog>({
     blogId: 1, title: '', excerpt: '', content: '', author: '', date: '', readTime: '', category: '', image: '', order: 0
   });
+  const [newSections, setNewSections] = useState<Section[]>([]);
+
+  const buildContentFromSections = (sections: Section[]) => {
+    const html = sections
+      .filter(s => s.heading.trim() || s.details.trim())
+      .map(s => {
+        const paras = s.details
+          .split(/\n\n+/)
+          .map(p => p.trim())
+          .filter(Boolean)
+          .map(p => `<p>${p.replace(/\n/g, '<br/>')}</p>`) // preserve single newlines
+          .join('');
+        return `<h2>${s.heading || ''}</h2>${paras}`;
+      })
+      .join('');
+    return html || '';
+  };
 
   const prefillSample = () => {
     const blogIdNum = blogs.length > 0 ? Math.max(...blogs.map(b => b.blogId)) + 1 : 1;
@@ -185,7 +207,7 @@ export default function AdminBlog() {
       blogId: blogIdNum,
       title: lang === 'de' ? 'Beispiel Blog Titel' : 'Sample Blog Title',
       excerpt: lang === 'de' ? 'Dies ist eine Beispielzusammenfassung' : 'This is a sample excerpt',
-      content: lang === 'de' ? '<p>Beispielinhalt</p>' : '<p>Sample content</p>',
+      content: lang === 'de' ? '<h2>Überschrift</h2><p>Beispielinhalt Absatz 1</p><p>Absatz 2</p>' : '<h2>Heading</h2><p>Sample content paragraph 1</p><p>Paragraph 2</p>',
       author: 'John Doe',
       date: new Date().toLocaleDateString(),
       readTime: '5 min read',
@@ -194,6 +216,10 @@ export default function AdminBlog() {
       order: 0,
     };
     setNewBlog(sample);
+    setNewSections([
+      { heading: lang === 'de' ? 'Einführung' : 'Introduction', details: lang === 'de' ? 'Dies ist der erste Abschnitt.\nWeitere Details hier.' : 'This is the first section.\nMore details here.' },
+      { heading: lang === 'de' ? 'Details' : 'Details', details: lang === 'de' ? 'Zweiter Abschnitt mit Informationen.' : 'Second section with information.' },
+    ]);
   };
 
   const onAdd = async () => {
@@ -284,7 +310,7 @@ export default function AdminBlog() {
               const q = query.trim().toLowerCase();
               const matches = !q || [String(b.blogId), b.title, b.author, b.category, b.date].join(' ').toLowerCase().includes(q);
               return (
-              <tr key={b._id || b.blogId} onMouseEnter={() => setHoverRow(idx)} onMouseLeave={() => setHoverRow(r => (r===idx?null:r))} onClick={() => { setEditTarget(b); setEditingBlog({ ...b }); }} style={{ background: hoverRow === idx ? '#0e1a33' : (idx % 2 ? '#0b1426' : 'transparent'), transition: 'background 120ms ease', display: matches ? undefined : 'none', cursor: 'pointer' }}>
+              <tr key={b._id || b.blogId} onMouseEnter={() => setHoverRow(idx)} onMouseLeave={() => setHoverRow(r => (r===idx?null:r))} onClick={() => { setEditTarget(b); setEditingBlog({ ...b }); setEditingSections(b.sections || []); }} style={{ background: hoverRow === idx ? '#0e1a33' : (idx % 2 ? '#0b1426' : 'transparent'), transition: 'background 120ms ease', display: matches ? undefined : 'none', cursor: 'pointer' }}>
                 <td style={tdStyle}>
                   <input type="number" min={1} value={b.blogId} onChange={e => setBlogField(idx, 'blogId', Number(e.target.value))} style={{ ...inputBase, width: 80, textAlign: 'center' as const }} />
                 </td>
@@ -333,6 +359,26 @@ export default function AdminBlog() {
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontSize: 12 }}>Content (HTML)</label>
                 <textarea value={b.content} onChange={e => setBlogField(idx, 'content', e.target.value)} style={{ ...inputBase, width: '100%', minHeight: 200, fontFamily: 'monospace' }} />
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12 }}>Structured Sections (optional)</label>
+                  <button onClick={() => setEditingSections(prev => [...prev, { heading: '', details: '' }])} style={btnSecondary}>Add Section</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {editingSections.map((s, sIdx) => (
+                    <div key={sIdx} style={{ border: '1px solid #1f2937', borderRadius: 10, padding: 10 }}>
+                      <input placeholder={`Heading ${sIdx + 1}`} value={s.heading} onChange={e => setEditingSections(arr => arr.map((it, i) => i === sIdx ? { ...it, heading: (e.target as HTMLInputElement).value } : it))} style={{ ...inputBase, width: '100%', marginBottom: 6 }} />
+                      <textarea placeholder="Details (supports new lines)" value={s.details} onChange={e => setEditingSections(arr => arr.map((it, i) => i === sIdx ? { ...it, details: (e.target as HTMLTextAreaElement).value } : it))} style={{ ...inputBase, width: '100%', minHeight: 100 }} />
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
+                        <button onClick={() => setEditingSections(arr => arr.filter((_, i) => i !== sIdx))} style={btnSecondary}>Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setBlogField(idx, 'content', buildContentFromSections(editingSections))} style={btnPrimary}>Build Content from Sections</button>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <div style={{ flex: 1 }}>
@@ -388,6 +434,26 @@ export default function AdminBlog() {
               </div>
               <textarea rows={2} placeholder="Excerpt" value={newBlog.excerpt} onChange={e => setNewBlog({ ...newBlog, excerpt: e.target.value })} style={{ ...inputBase, width: '100%', minHeight: 60 }} />
               <textarea rows={8} placeholder="Content (HTML)" value={newBlog.content} onChange={e => setNewBlog({ ...newBlog, content: e.target.value })} style={{ ...inputBase, width: '100%', minHeight: 200, fontFamily: 'monospace' }} />
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12 }}>Structured Sections (optional)</label>
+                  <button onClick={() => setNewSections(prev => [...prev, { heading: '', details: '' }])} style={btnSecondary}>Add Section</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {newSections.map((s, idx) => (
+                    <div key={idx} style={{ border: '1px solid #1f2937', borderRadius: 10, padding: 10 }}>
+                      <input placeholder={`Heading ${idx + 1}`} value={s.heading} onChange={e => setNewSections(arr => arr.map((it, i) => i === idx ? { ...it, heading: (e.target as HTMLInputElement).value } : it))} style={{ ...inputBase, width: '100%', marginBottom: 6 }} />
+                      <textarea placeholder="Details (supports new lines)" value={s.details} onChange={e => setNewSections(arr => arr.map((it, i) => i === idx ? { ...it, details: (e.target as HTMLTextAreaElement).value } : it))} style={{ ...inputBase, width: '100%', minHeight: 100 }} />
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
+                        <button onClick={() => setNewSections(arr => arr.filter((_, i) => i !== idx))} style={btnSecondary}>Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setNewBlog(b => ({ ...b, content: buildContentFromSections(newSections) }))} style={btnPrimary}>Build Content from Sections</button>
+                </div>
+              </div>
             </div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={prefillSample} style={{ ...btnSecondary }}>Prefill sample</button>
@@ -421,6 +487,26 @@ export default function AdminBlog() {
               </div>
               <textarea rows={2} placeholder="Excerpt" value={editingBlog.excerpt} onChange={e => setEditingBlog({ ...editingBlog, excerpt: (e.target as HTMLTextAreaElement).value })} style={{ ...inputBase, width: '100%', minHeight: 60 }} />
               <textarea rows={8} placeholder="Content (HTML)" value={editingBlog.content} onChange={e => setEditingBlog({ ...editingBlog, content: (e.target as HTMLTextAreaElement).value })} style={{ ...inputBase, width: '100%', minHeight: 200, fontFamily: 'monospace' }} />
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12 }}>Structured Sections (optional)</label>
+                  <button onClick={() => setEditingSections(prev => [...prev, { heading: '', details: '' }])} style={btnSecondary}>Add Section</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {editingSections.map((s, idx) => (
+                    <div key={idx} style={{ border: '1px solid #1f2937', borderRadius: 10, padding: 10 }}>
+                      <input placeholder={`Heading ${idx + 1}`} value={s.heading} onChange={e => setEditingSections(arr => arr.map((it, i) => i === idx ? { ...it, heading: (e.target as HTMLInputElement).value } : it))} style={{ ...inputBase, width: '100%', marginBottom: 6 }} />
+                      <textarea placeholder="Details (supports new lines)" value={s.details} onChange={e => setEditingSections(arr => arr.map((it, i) => i === idx ? { ...it, details: (e.target as HTMLTextAreaElement).value } : it))} style={{ ...inputBase, width: '100%', minHeight: 100 }} />
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
+                        <button onClick={() => setEditingSections(arr => arr.filter((_, i) => i !== idx))} style={btnSecondary}>Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setEditingBlog(b => (b ? { ...b, content: buildContentFromSections(editingSections) } : b))} style={btnPrimary}>Build Content from Sections</button>
+                </div>
+              </div>
             </div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => { setEditTarget(null); setEditingBlog(null); }} style={btnSecondary}>Cancel</button>
