@@ -139,7 +139,7 @@ export default function AdminBlog() {
     }
   };
 
-  const onSave = async (b: Blog) => {
+  const onSave = async (b: Blog, sectionsOverride?: Section[]) => {
     const err = validateCore(b);
     if (err) return alert(err);
     if (!hasToken) return alert('Admin token required');
@@ -154,7 +154,7 @@ export default function AdminBlog() {
       image: b.image,
       charts: b.charts,
       order: b.order,
-      sections: b.sections,
+      sections: sectionsOverride ?? b.sections,
     };
     const url = `${API_BASE}/api/admin/blogs/${b.blogId}`;
     setSavingId(b.blogId);
@@ -233,7 +233,7 @@ export default function AdminBlog() {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...headers() },
-      body: JSON.stringify({ lang, blog: newBlog }),
+      body: JSON.stringify({ lang, blog: { ...newBlog, sections: newSections } }),
     });
     if (!res.ok) {
       if (res.status === 409) {
@@ -510,7 +510,7 @@ export default function AdminBlog() {
             </div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => { setEditTarget(null); setEditingBlog(null); }} style={btnSecondary}>Cancel</button>
-              <button onClick={() => { if (editingBlog) void onSave(editingBlog); setEditTarget(null); setEditingBlog(null); }} disabled={!hasToken} style={btnPrimary}>Save Changes</button>
+              <button onClick={() => { if (editingBlog) void onSave(editingBlog, editingSections); setEditTarget(null); setEditingBlog(null); }} disabled={!hasToken} style={btnPrimary}>Save Changes</button>
             </div>
           </div>
         </div>
