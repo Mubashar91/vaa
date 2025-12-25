@@ -363,15 +363,15 @@ export default function AdminBlog() {
               <div style={{ marginTop: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <label style={{ display: 'block', fontSize: 12 }}>Structured Sections (optional)</label>
-                  <button onClick={() => setEditingSections(prev => [...prev, { heading: '', details: '' }])} style={btnSecondary}>Add Section</button>
+                  <button onClick={() => setEditingSections(prev => { const next = [...prev, { heading: '', details: '' }]; setBlogField(idx, 'sections', next as unknown as Blog[keyof Blog]); return next; })} style={btnSecondary}>Add Section</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {editingSections.map((s, sIdx) => (
                     <div key={sIdx} style={{ border: '1px solid #1f2937', borderRadius: 10, padding: 10 }}>
-                      <input placeholder={`Heading ${sIdx + 1}`} value={s.heading} onChange={e => setEditingSections(arr => arr.map((it, i) => i === sIdx ? { ...it, heading: (e.target as HTMLInputElement).value } : it))} style={{ ...inputBase, width: '100%', marginBottom: 6 }} />
-                      <textarea placeholder="Details (supports new lines)" value={s.details} onChange={e => setEditingSections(arr => arr.map((it, i) => i === sIdx ? { ...it, details: (e.target as HTMLTextAreaElement).value } : it))} style={{ ...inputBase, width: '100%', minHeight: 100 }} />
+                      <input placeholder={`Heading ${sIdx + 1}`} value={s.heading} onChange={e => setEditingSections(arr => { const next = arr.map((it, i) => i === sIdx ? { ...it, heading: (e.target as HTMLInputElement).value } : it); setBlogField(idx, 'sections', next as unknown as Blog[keyof Blog]); return next; })} style={{ ...inputBase, width: '100%', marginBottom: 6 }} />
+                      <textarea placeholder="Details (supports new lines)" value={s.details} onChange={e => setEditingSections(arr => { const next = arr.map((it, i) => i === sIdx ? { ...it, details: (e.target as HTMLTextAreaElement).value } : it); setBlogField(idx, 'sections', next as unknown as Blog[keyof Blog]); return next; })} style={{ ...inputBase, width: '100%', minHeight: 100 }} />
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
-                        <button onClick={() => setEditingSections(arr => arr.filter((_, i) => i !== sIdx))} style={btnSecondary}>Remove</button>
+                        <button onClick={() => setEditingSections(arr => { const next = arr.filter((_, i) => i !== sIdx); setBlogField(idx, 'sections', next as unknown as Blog[keyof Blog]); return next; })} style={btnSecondary}>Remove</button>
                       </div>
                     </div>
                   ))}
@@ -537,6 +537,6 @@ export default function AdminBlog() {
 }
 
 function isEqualBlog(a: Blog, b: Blog) {
-  return a.blogId===b.blogId && a.title===b.title && a.excerpt===b.excerpt && a.content===b.content && a.author===b.author && a.date===b.date && a.readTime===b.readTime && a.category===b.category && a.image===b.image && JSON.stringify(a.charts || null)===JSON.stringify(b.charts || null) && a.order===b.order;
+  return a.blogId===b.blogId && a.title===b.title && a.excerpt===b.excerpt && a.content===b.content && a.author===b.author && a.date===b.date && a.readTime===b.readTime && a.category===b.category && a.image===b.image && JSON.stringify(a.charts || null)===JSON.stringify(b.charts || null) && a.order===b.order && JSON.stringify(a.sections || null)===JSON.stringify(b.sections || null);
 }
 

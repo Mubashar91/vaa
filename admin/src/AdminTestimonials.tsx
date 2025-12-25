@@ -9,6 +9,7 @@ interface Testimonial {
   name: string;
   role: string;
   company: string;
+  rating: number;
 }
 
 const API_BASE =
@@ -103,12 +104,14 @@ export default function AdminTestimonials() {
     setTestimonials(prev => prev.map((t, i) => (i === idx ? { ...t, [key]: value } : t)));
   };
 
-  const validateCore = (t: Pick<Testimonial, 'order'|'content'|'name'|'role'|'company'>) => {
+  const validateCore = (t: Pick<Testimonial, 'order'|'content'|'name'|'role'|'company'|'rating'>) => {
     if (t.order < 0) return 'Order must be non-negative';
     if (!t.content.trim()) return 'Content is required';
     if (!t.name.trim()) return 'Name is required';
     if (!t.role.trim()) return 'Role is required';
     if (!t.company.trim()) return 'Company is required';
+    if (typeof t.rating !== 'number' || isNaN(t.rating)) return 'Rating must be a number';
+    if (t.rating < 1 || t.rating > 5) return 'Rating must be between 1 and 5';
     return null;
   };
 
@@ -136,6 +139,7 @@ export default function AdminTestimonials() {
       name: t.name,
       role: t.role,
       company: t.company,
+      rating: t.rating,
     };
     const url = `${API_BASE}/api/admin/testimonials/${t.order}`;
     setSavingOrder(t.order);
@@ -162,7 +166,7 @@ export default function AdminTestimonials() {
   };
 
   const [newTestimonial, setNewTestimonial] = useState<Testimonial>({
-    order: 0, content: '', name: '', role: '', company: ''
+    order: 0, content: '', name: '', role: '', company: '', rating: 5
   });
 
   const prefillSample = () => {
@@ -173,6 +177,7 @@ export default function AdminTestimonials() {
       name: lang === 'de' ? 'Max Mustermann' : 'John Doe',
       role: lang === 'de' ? 'CEO' : 'CEO',
       company: lang === 'de' ? 'Beispiel GmbH' : 'Example Inc',
+      rating: 5,
     };
     setNewTestimonial(sample);
   };
@@ -197,7 +202,7 @@ export default function AdminTestimonials() {
       await logHttpError(res, `POST ${url}`);
       return alert('Add failed: ' + res.status);
     }
-    setNewTestimonial({ order: 0, content: '', name: '', role: '', company: '' });
+    setNewTestimonial({ order: 0, content: '', name: '', role: '', company: '', rating: 5 });
     await load();
     pushToast('Testimonial added');
     setAddOpen(false);
@@ -270,13 +275,14 @@ export default function AdminTestimonials() {
               <th style={{ ...thStyle }}>Name</th>
               <th style={{ ...thStyle }}>Role</th>
               <th style={{ ...thStyle }}>Company</th>
+              <th style={{ ...thStyle }}>Rating</th>
               <th style={{ ...thStyle }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {testimonials.map((t, idx) => {
               const q = query.trim().toLowerCase();
-              const matches = !q || [String(t.order), t.content, t.name, t.role, t.company].join(' ').toLowerCase().includes(q);
+              const matches = !q || [String(t.order), t.content, t.name, t.role, t.company, String(t.rating ?? '')].join(' ').toLowerCase().includes(q);
               return (
               <tr key={t._id || t.order} onMouseEnter={() => setHoverRow(idx)} onMouseLeave={() => setHoverRow(r => (r===idx?null:r))} onClick={() => { setEditTarget(t); setEditingTestimonial({ ...t }); }} style={{ background: hoverRow === idx ? '#0e1a33' : (idx % 2 ? '#0b1426' : 'transparent'), transition: 'background 120ms ease', display: matches ? undefined : 'none', cursor: 'pointer' }}>
                 <td style={tdStyle}>
@@ -293,6 +299,9 @@ export default function AdminTestimonials() {
                 </td>
                 <td style={tdStyle}>
                   <input value={t.company} onChange={e => setTestimonialField(idx, 'company', e.target.value)} style={{ ...inputBase, width: '100%' }} />
+                </td>
+                <td style={tdStyle}>
+                  <input type="number" min={1} max={5} value={t.rating ?? 5} onChange={e => setTestimonialField(idx, 'rating', Math.max(1, Math.min(5, Number(e.target.value))))} style={{ ...inputBase, width: 100 }} />
                 </td>
                 <td style={tdStyle}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -322,6 +331,7 @@ export default function AdminTestimonials() {
             <input placeholder="Name" value={newTestimonial.name} onChange={e => setNewTestimonial({ ...newTestimonial, name: e.target.value })} style={{ ...inputBase, flex: '1 1 260px' }} />
             <input placeholder="Role" value={newTestimonial.role} onChange={e => setNewTestimonial({ ...newTestimonial, role: e.target.value })} style={{ ...inputBase, flex: '1 1 260px' }} />
             <input placeholder="Company" value={newTestimonial.company} onChange={e => setNewTestimonial({ ...newTestimonial, company: e.target.value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+            <input type="number" placeholder="Rating (1-5)" min={1} max={5} value={newTestimonial.rating} onChange={e => setNewTestimonial({ ...newTestimonial, rating: Math.max(1, Math.min(5, Number(e.target.value))) })} style={{ ...inputBase, width: 160 }} />
           </div>
           <div style={{ marginTop: 12 }}>
             <button onClick={onAdd} disabled={newTestimonial.order < 0 || !hasToken} style={{ ...btnPrimary, opacity: newTestimonial.order >= 0 && hasToken ? 1 : 0.6 }}>Add Testimonial</button>
@@ -344,6 +354,7 @@ export default function AdminTestimonials() {
               <input placeholder="Name" value={newTestimonial.name} onChange={e => setNewTestimonial({ ...newTestimonial, name: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
               <input placeholder="Role" value={newTestimonial.role} onChange={e => setNewTestimonial({ ...newTestimonial, role: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
               <input placeholder="Company" value={newTestimonial.company} onChange={e => setNewTestimonial({ ...newTestimonial, company: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+              <input type="number" placeholder="Rating (1-5)" min={1} max={5} value={newTestimonial.rating} onChange={e => setNewTestimonial({ ...newTestimonial, rating: Math.max(1, Math.min(5, Number((e.target as HTMLInputElement).value))) })} style={{ ...inputBase, width: 160 }} />
             </div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={prefillSample} style={{ ...btnSecondary }}>Prefill sample</button>
@@ -368,6 +379,7 @@ export default function AdminTestimonials() {
               <input placeholder="Name" value={editingTestimonial.name} onChange={e => setEditingTestimonial({ ...editingTestimonial, name: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
               <input placeholder="Role" value={editingTestimonial.role} onChange={e => setEditingTestimonial({ ...editingTestimonial, role: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
               <input placeholder="Company" value={editingTestimonial.company} onChange={e => setEditingTestimonial({ ...editingTestimonial, company: (e.target as HTMLInputElement).value })} style={{ ...inputBase, flex: '1 1 260px' }} />
+              <input type="number" placeholder="Rating (1-5)" min={1} max={5} value={editingTestimonial.rating} onChange={e => setEditingTestimonial({ ...editingTestimonial, rating: Math.max(1, Math.min(5, Number((e.target as HTMLInputElement).value))) })} style={{ ...inputBase, width: 160 }} />
             </div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => { setEditTarget(null); setEditingTestimonial(null); }} style={btnSecondary}>Cancel</button>
@@ -398,6 +410,6 @@ export default function AdminTestimonials() {
 }
 
 function isEqualTestimonial(a: Testimonial, b: Testimonial) {
-  return a.order===b.order && a.content===b.content && a.name===b.name && a.role===b.role && a.company===b.company;
+  return a.order===b.order && a.content===b.content && a.name===b.name && a.role===b.role && a.company===b.company && a.rating===b.rating;
 }
 
