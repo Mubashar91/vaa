@@ -15,7 +15,7 @@ const modelPool = new Map(); // Key: tenantId-modelName
 export async function getTenantConnection(tenantId) {
     if (!tenantId) throw new Error('Tenant ID is required');
 
-    // Check if a connection or a connection attempt already exists
+    // Check if a connection or a connection attempt already exists.
     if (connectionPool.has(tenantId)) {
         return connectionPool.get(tenantId);
     }
