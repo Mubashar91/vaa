@@ -27,56 +27,63 @@ jobs:
           script: |
             set -e  # Exit immediately if a command exits with a non-zero status
             echo "🚀 Starting deployment..."
-            
-            # Navigate to application directory
-            cd /var/www/vaa-backend
-            
-            # Navigate to backend directory
-            cd backend
-            
-            # Backup .env if it exists (because git pull might delete it if we untrack it)
-            if [ -f .env ]; then
-              echo "💾 Backing up .env..."
-              cp .env .env.backup
-            fi
-            
-            # Navigate back to root to pull
-            cd ..
 
-            # Pull latest changes
-            echo "📥 Pulling latest code..."
-            # Using stash to handle any potential local conflict with .env before it's untracked
-            git stash
-            git pull origin mubii
-            git stash pop || true # apply stash, ignore if fails (likely conflict on .env which we don't care about if we have backup)
-            
-            # Navigate back to backend
-            cd backend
+            # Define paths
+            REPO_DIR="/var/www/vaa-backend"
+            BACKEND_DIR="$REPO_DIR/backend"
+            ENV_FILE="$BACKEND_DIR/.env"
+            TEMP_ENV_BACKUP="/tmp/vaa-backend.env.backup"
+
+            # Navigate to application directory
+            echo "📂 Navigating to repository..."
+            cd $REPO_DIR
+
+            # Backup .env safely to /tmp
+            if [ -f "$ENV_FILE" ]; then
+              echo "💾 Backing up .env to safe location..."
+              cp "$ENV_FILE" "$TEMP_ENV_BACKUP"
+            else
+              echo "⚠️ No .env file found at $ENV_FILE. Skipping backup."
+            fi
+
+            # Fetch and Reset
+            echo "📥 Fetching and resetting repository..."
+            # Fetch the specific branch
+            git fetch origin mubii
+            # Reset hard to matches the remote state exactly
+            # This DISCARDS local changes and ignores merge conflicts by overwriting
+            git reset --hard origin/mubii
 
             # Restore .env
-            if [ -f .env.backup ]; then
-              echo "♻️  Restoring .env..."
-              mv .env.backup .env
+            if [ -f "$TEMP_ENV_BACKUP" ]; then
+              echo "♻️ Restoring .env..."
+              mv "$TEMP_ENV_BACKUP" "$ENV_FILE"
+            else
+               echo "⚠️ No backup found to restore."
             fi
-            
+
+            # Navigate to backend for install/restart
+            cd $BACKEND_DIR
+
             # Install dependencies
             echo "📦 Installing dependencies..."
             npm ci --production
-            
+
             # Restart application with PM2
             echo "🔄 Restarting application..."
             pm2 restart vaa-backend || pm2 start ecosystem.config.cjs
-            
+
             # Save PM2 configuration
             pm2 save
-            
+
             # Wait for application to start
+            echo "⏳ Waiting for application to start..."
             sleep 5
-            
+
             # Health check
             echo "🏥 Running health check..."
             HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5001/health)
-            
+
             if [ "$HEALTH_STATUS" -eq 200 ]; then
               echo "✅ Deployment successful! Application is healthy."
               pm2 list
