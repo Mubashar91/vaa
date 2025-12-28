@@ -13,7 +13,7 @@ const en = {
     pricing: "Pricing",
     testimonials: "Testimonials",
     faq: "FAQ",
-    contact: "Contact",
+    contact: "Contact Us",
     getStarted: "Get Started",
     bookMeeting: "Book a Meeting"
   },
@@ -352,9 +352,34 @@ const en = {
     form: {
       name: "Name",
       email: "Email",
+      phone: "Phone Number",
       message: "Message",
       submit: "Send Message",
-      success: "Thank you! We'll get back to you soon."
+      submitSending: "Sending...",
+      success: "Thank you! We'll get back to you soon.",
+      mainServiceLabel: "Main service you want VAs for",
+      mainServicePlaceholder: "Select one main service",
+      mainServiceOtherLabel: "What other service do you want VAs for?",
+      mainServiceOtherPlaceholder: "Example: Lead generation, video editing, sales outreach, etc.",
+      vaCountLabel: "How many VAs do you need?",
+      vaCountPlaceholder: "e.g. 2",
+      va1Label: "VA #1 – background / main tasks",
+      va2IndustryLabel: "Main industry for VA #2",
+      va2Label: "VA #2 – background / main tasks",
+      va3IndustryLabel: "Main industry for VA #3",
+      va3Label: "VA #3 – background / main tasks",
+      va4IndustryLabel: "Main industry for VA #4",
+      va4Label: "VA #4 – background / main tasks",
+      otherTasksLabel: "Any other VA tasks?",
+      otherTasksPlaceholder: "Example: Lead research, CRM updates, basic design tasks, etc.",
+      validation: {
+        emailRequired: "Email is required",
+        emailInvalid: "Enter a valid email",
+        phoneRequired: "Phone number is required",
+        phoneInvalid: "Enter a valid phone number",
+        mainServiceRequired: "Please select one main service",
+        vaCountRequired: "Please tell us how many VAs you need"
+      }
     }
   },
   footer: {
@@ -614,9 +639,34 @@ const de = {
     form: {
       name: "Name",
       email: "E-Mail",
+      phone: "Telefonnummer",
       message: "Nachricht",
       submit: "Nachricht senden",
-      success: "Vielen Dank! Wir melden uns in Kürze bei Ihnen."
+      submitSending: "Senden...",
+      success: "Vielen Dank! Wir melden uns in Kürze bei Ihnen.",
+      mainServiceLabel: "Hauptleistung, für die Sie VAs möchten",
+      mainServicePlaceholder: "Wählen Sie eine Hauptleistung",
+      mainServiceOtherLabel: "Welche andere Leistung benötigen Sie?",
+      mainServiceOtherPlaceholder: "Beispiel: Leadgenerierung, Videoschnitt, Sales Outreach, etc.",
+      vaCountLabel: "Wie viele VAs benötigen Sie?",
+      vaCountPlaceholder: "z. B. 2",
+      va1Label: "VA #1 – Hintergrund / Hauptaufgaben",
+      va2IndustryLabel: "Hauptbranche für VA #2",
+      va2Label: "VA #2 – Hintergrund / Hauptaufgaben",
+      va3IndustryLabel: "Hauptbranche für VA #3",
+      va3Label: "VA #3 – Hintergrund / Hauptaufgaben",
+      va4IndustryLabel: "Hauptbranche für VA #4",
+      va4Label: "VA #4 – Hintergrund / Hauptaufgaben",
+      otherTasksLabel: "Weitere VA-Aufgaben?",
+      otherTasksPlaceholder: "Beispiel: Leadrecherche, CRM-Updates, einfache Designaufgaben, etc.",
+      validation: {
+        emailRequired: "E-Mail ist erforderlich",
+        emailInvalid: "Bitte geben Sie eine gültige E-Mail ein",
+        phoneRequired: "Telefonnummer ist erforderlich",
+        phoneInvalid: "Bitte geben Sie eine gültige Telefonnummer ein",
+        mainServiceRequired: "Bitte wählen Sie eine Hauptleistung",
+        vaCountRequired: "Bitte geben Sie an, wie viele VAs Sie benötigen"
+      }
     }
   },
   footer: {

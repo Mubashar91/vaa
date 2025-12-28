@@ -3,7 +3,7 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
-import { caseStudiesEn, caseStudiesDe, type CaseStudy } from "@/data/caseStudies";
+import { type CaseStudy } from "@/data/caseStudies";
 
 // API Configuration
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
@@ -89,9 +89,8 @@ export const CaseStudies = () => {
           console.error('Error fetching case studies:', err);
         }
         setError(err instanceof Error ? err.message : 'Failed to load case studies');
-        // Fallback to hardcoded data
-        const fallback = currentLang === 'de' ? caseStudiesDe : caseStudiesEn;
-        setStudies(fallback);
+        // No fallback to hardcoded data; rely solely on API
+        setStudies([]);
       } finally {
         setLoading(false);
       }
@@ -126,6 +125,17 @@ export const CaseStudies = () => {
       transition={{ duration: 0.8 }}
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Error or empty state */}
+        {(error || studies.length === 0) && (
+          <div className="text-center py-20">
+            <p className="text-muted-foreground mb-4">
+              {error || (currentLang === 'de' 
+                ? 'Keine Fallstudien verfügbar. Bitte fügen Sie Fallstudien im Admin-Panel hinzu.'
+                : 'No case studies available. Please add case studies in the admin panel.')}
+            </p>
+          </div>
+        )}
+
         {/* Header */}
         <motion.div
           className="mb-8 sm:mb-12 lg:mb-16 text-left"

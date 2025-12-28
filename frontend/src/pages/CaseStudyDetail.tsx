@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
-import { caseStudiesEn, caseStudiesDe, type CaseStudy } from "@/data/caseStudies";
+import { type CaseStudy } from "@/data/caseStudies";
 
 // API Configuration
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
@@ -112,11 +112,9 @@ const CaseStudyDetail = () => {
           console.error('Error fetching case study:', err);
         }
         setError(err instanceof Error ? err.message : 'Failed to load case study');
-        // Fallback to hardcoded data
-        const studies = currentLang === 'de' ? caseStudiesDe : caseStudiesEn;
-        const found = studies.find(cs => cs.id === Number(id));
-        if (found) setCaseStudy(found);
-        setAllStudies(studies);
+        // No fallback to hardcoded data; rely solely on API
+        setCaseStudy(null);
+        setAllStudies([]);
       } finally {
         setLoading(false);
       }

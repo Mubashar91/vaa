@@ -567,7 +567,24 @@ const BlogDetail = () => {
                     </div>
                   );
                 }
-                return <div dangerouslySetInnerHTML={{ __html: postToRender.content }} />;
+
+                const content = postToRender.content || '';
+                const looksLikeHTML = /<\s*([a-zA-Z]+)(\s|>|\/)/.test(content) || /<\s*br\s*\/?\s*>/i.test(content);
+                if (looksLikeHTML) {
+                  return <div dangerouslySetInnerHTML={{ __html: content }} />;
+                }
+
+                return (
+                  <div>
+                    {content
+                      .split(/\n\n+/)
+                      .map((para, idx) => (
+                        <p key={idx} className="whitespace-pre-line">
+                          {para}
+                        </p>
+                      ))}
+                  </div>
+                );
               })()}
             </motion.div>
 

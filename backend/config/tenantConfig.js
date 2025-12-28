@@ -13,5 +13,10 @@ export const tenants = {
     "seo": {
         uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
         dbName: "seo"
+     },
+
+      "social-media-agency": {
+        uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
+        dbName: "social-media-agency"
     }
 };

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import { Navbar } from "@/components/Navbar";
+import { useTranslation } from "react-i18next";
 
 
 type FormValues = {
@@ -34,6 +35,7 @@ type FormValues = {
 };
 
 const Contact = () => {
+  const { t } = useTranslation();
   const {
     register,
     handleSubmit,
@@ -140,23 +142,23 @@ const Contact = () => {
           >
           <Card className="border border-gold/15 bg-gradient-to-br from-background/90 via-background/95 to-black/90 shadow-xl shadow-black/30 backdrop-blur-xl">
             <CardHeader>
-              <CardTitle>Contact Us</CardTitle>
+              <CardTitle>{t("contact.title")}</CardTitle>
               <CardDescription>
-                Share your email, phone, and purpose. We'll respond promptly.
+                {t("contact.subtitle")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">{t("contact.form.email")}</Label>
                     <Input
                       id="email"
                       type="email"
                       placeholder="you@company.com"
                       {...register("email", {
-                        required: "Email is required",
-                        pattern: { value: emailPattern, message: "Enter a valid email" },
+                        required: t("contact.form.validation.emailRequired"),
+                        pattern: { value: emailPattern, message: t("contact.form.validation.emailInvalid") },
                       })}
                     />
                     {errors.email && (
@@ -164,14 +166,14 @@ const Contact = () => {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone">{t("contact.form.phone")}</Label>
                     <Input
                       id="phone"
                       type="tel"
                       placeholder="+1 555 123 4567"
                       {...register("phone", {
-                        required: "Phone number is required",
-                        pattern: { value: phonePattern, message: "Enter a valid phone number" },
+                        required: t("contact.form.validation.phoneRequired"),
+                        pattern: { value: phonePattern, message: t("contact.form.validation.phoneInvalid") },
                       })}
                     />
                     {errors.phone && (
@@ -181,12 +183,12 @@ const Contact = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Main service you want VAs for</Label>
+                  <Label>{t("contact.form.mainServiceLabel")}</Label>
                   <Select
                     onValueChange={(v) => setValue("mainService", v, { shouldValidate: true })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select one main service" />
+                      <SelectValue placeholder={t("contact.form.mainServicePlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="social-media">Social Media Management</SelectItem>
@@ -198,18 +200,18 @@ const Contact = () => {
                   </Select>
                   <input
                     type="hidden"
-                    {...register("mainService", { required: "Please select one main service" })}
+                    {...register("mainService", { required: t("contact.form.validation.mainServiceRequired") })}
                   />
                   {errors.mainService && (
                     <p className="text-sm font-medium text-destructive">{errors.mainService.message}</p>
                   )}
                   {mainServiceValue === "other" && (
                     <div className="space-y-2 mt-3">
-                      <Label htmlFor="mainServiceOther">What other service do you want VAs for?</Label>
+                      <Label htmlFor="mainServiceOther">{t("contact.form.mainServiceOtherLabel")}</Label>
                       <Textarea
                         id="mainServiceOther"
                         rows={3}
-                        placeholder="Example: Lead generation, video editing, sales outreach, etc."
+                        placeholder={t("contact.form.mainServiceOtherPlaceholder")}
                         {...register("mainServiceOther")}
                       />
                     </div>
@@ -217,14 +219,14 @@ const Contact = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="vaCount">How many VAs do you need?</Label>
+                  <Label htmlFor="vaCount">{t("contact.form.vaCountLabel")}</Label>
                   <Input
                     id="vaCount"
                     type="number"
                     min={1}
-                    placeholder="e.g. 2"
+                    placeholder={t("contact.form.vaCountPlaceholder")}
                     {...register("vaCount", {
-                      required: "Please tell us how many VAs you need",
+                      required: t("contact.form.validation.vaCountRequired"),
                     })}
                   />
                   {errors.vaCount && (
@@ -234,7 +236,7 @@ const Contact = () => {
 
                 {Number(vaCountValue) >= 1 && (
                   <div className="space-y-2">
-                    <Label htmlFor="va1Background">VA #1 – background / main tasks</Label>
+                    <Label htmlFor="va1Background">{t("contact.form.va1Label")}</Label>
                     <Textarea
                       id="va1Background"
                       rows={3}
@@ -246,12 +248,12 @@ const Contact = () => {
 
                 {Number(vaCountValue) >= 2 && (
                   <div className="space-y-2">
-                    <Label>Main industry for VA #2</Label>
+                    <Label>{t("contact.form.va2IndustryLabel")}</Label>
                     <Select
                       onValueChange={(v) => setValue("va2Industry", v, { shouldValidate: false })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select industry for VA #2 (optional)" />
+                        <SelectValue placeholder={t("contact.form.va2IndustryLabel")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ecommerce">E-Commerce</SelectItem>
@@ -261,7 +263,7 @@ const Contact = () => {
                       </SelectContent>
                     </Select>
 
-                    <Label htmlFor="va2Background">VA #2 – background / main tasks</Label>
+                    <Label htmlFor="va2Background">{t("contact.form.va2Label")}</Label>
                     <Textarea
                       id="va2Background"
                       rows={3}
@@ -273,12 +275,12 @@ const Contact = () => {
 
                 {Number(vaCountValue) >= 3 && (
                   <div className="space-y-2">
-                    <Label>Main industry for VA #3</Label>
+                    <Label>{t("contact.form.va3IndustryLabel")}</Label>
                     <Select
                       onValueChange={(v) => setValue("va3Industry", v, { shouldValidate: false })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select industry for VA #3 (optional)" />
+                        <SelectValue placeholder={t("contact.form.va3IndustryLabel")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ecommerce">E-Commerce</SelectItem>
@@ -288,7 +290,7 @@ const Contact = () => {
                       </SelectContent>
                     </Select>
 
-                    <Label htmlFor="va3Background">VA #3 – background / main tasks</Label>
+                    <Label htmlFor="va3Background">{t("contact.form.va3Label")}</Label>
                     <Textarea
                       id="va3Background"
                       rows={3}
@@ -300,12 +302,12 @@ const Contact = () => {
 
                 {Number(vaCountValue) >= 4 && (
                   <div className="space-y-2">
-                    <Label>Main industry for VA #4</Label>
+                    <Label>{t("contact.form.va4IndustryLabel")}</Label>
                     <Select
                       onValueChange={(v) => setValue("va4Industry", v, { shouldValidate: false })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select industry for VA #4 (optional)" />
+                        <SelectValue placeholder={t("contact.form.va4IndustryLabel")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ecommerce">E-Commerce</SelectItem>
@@ -315,7 +317,7 @@ const Contact = () => {
                       </SelectContent>
                     </Select>
 
-                    <Label htmlFor="va4Background">VA #4 – background / main tasks</Label>
+                    <Label htmlFor="va4Background">{t("contact.form.va4Label")}</Label>
                     <Textarea
                       id="va4Background"
                       rows={3}
@@ -326,11 +328,11 @@ const Contact = () => {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="otherTasks">Any other VA tasks?</Label>
+                  <Label htmlFor="otherTasks">{t("contact.form.otherTasksLabel")}</Label>
                   <Textarea
                     id="otherTasks"
                     rows={3}
-                    placeholder="Example: Lead research, CRM updates, basic design tasks, etc. (optional)"
+                    placeholder={t("contact.form.otherTasksPlaceholder")}
                     {...register("otherTasks")}
                   />
                 </div>
@@ -342,7 +344,7 @@ const Contact = () => {
                     className="px-8 shadow-lg shadow-gold/30 hover:shadow-gold/50 hover:scale-[1.03] active:scale-[0.99] transition-transform duration-200"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Sending..." : "Send Message"}
+                    {isSubmitting ? t("contact.form.submitSending") : t("contact.form.submit")}
                   </Button>
                 </div>
               </form>
