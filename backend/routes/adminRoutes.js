@@ -50,11 +50,11 @@ router.delete('/services/:id', deleteService);
 
 // Testimonials routes
 router.options('/testimonials', (_req, res) => res.sendStatus(204));
-router.options('/testimonials/:order', (_req, res) => res.sendStatus(204));
+router.options('/testimonials/:id', (_req, res) => res.sendStatus(204));
 router.get('/testimonials', listTestimonials);
 router.post('/testimonials', createTestimonial);
-router.put('/testimonials/:order', updateTestimonial);
-router.delete('/testimonials/:order', deleteTestimonial);
+router.put('/testimonials/:id', updateTestimonial);
+router.delete('/testimonials/:id', deleteTestimonial);
 
 // Blog routes
 router.options('/blogs', (_req, res) => res.sendStatus(204));

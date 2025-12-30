@@ -4,7 +4,7 @@ type Lang = 'en' | 'de';
 
 interface Testimonial {
   _id?: string;
-  order: number;
+  order?: number;
   content: string;
   name: string;
   role: string;
@@ -85,7 +85,7 @@ export default function AdminTestimonials() {
       const res = await fetch(`${API_BASE}/api/admin/testimonials?lang=${lang}`, { headers: headers() });
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
       const data = await res.json();
-      const list: Testimonial[] = Array.isArray(data.testimonials) ? data.testimonials.slice().sort((a: Testimonial, b: Testimonial) => a.order - b.order) : [];
+      const list: Testimonial[] = Array.isArray(data.testimonials) ? data.testimonials.slice().sort((a: Testimonial, b: Testimonial) => (a.order ?? 0) - (b.order ?? 0)) : [];
       setTestimonials(list);
       setOriginalTestimonials(JSON.parse(JSON.stringify(list)) as Testimonial[]);
     } catch (e: unknown) {
@@ -105,7 +105,7 @@ export default function AdminTestimonials() {
   };
 
   const validateCore = (t: Pick<Testimonial, 'order'|'content'|'name'|'role'|'company'|'rating'>) => {
-    if (t.order < 0) return 'Order must be non-negative';
+    if ((t.order ?? 0) < 0) return 'Order must be non-negative';
     if (!t.content.trim()) return 'Content is required';
     if (!t.name.trim()) return 'Name is required';
     if (!t.role.trim()) return 'Role is required';
@@ -134,15 +134,16 @@ export default function AdminTestimonials() {
     const err = validateCore(t);
     if (err) return alert(err);
     if (!hasToken) return alert('Admin token required');
-    const updates: Partial<Omit<Testimonial, 'order'>> = {
+    if (!t._id) return alert('Testimonial ID is required');
+    const updates: Partial<Omit<Testimonial, '_id'>> = {
       content: t.content,
       name: t.name,
       role: t.role,
       company: t.company,
       rating: t.rating,
     };
-    const url = `${API_BASE}/api/admin/testimonials/${t.order}`;
-    setSavingOrder(t.order);
+    const url = `${API_BASE}/api/admin/testimonials/${t._id}`;
+    setSavingOrder(t.order ?? 0);
     const res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...headers() },
@@ -156,7 +157,8 @@ export default function AdminTestimonials() {
 
   const onDelete = async (t: Testimonial) => {
     if (!hasToken) return alert('Admin token required');
-    const url = `${API_BASE}/api/admin/testimonials/${t.order}?lang=${lang}`;
+    if (!t._id) return alert('Testimonial ID is required');
+    const url = `${API_BASE}/api/admin/testimonials/${t._id}?lang=${lang}`;
     const res = await fetch(url, {
       method: 'DELETE', headers: headers()
     });
@@ -167,10 +169,10 @@ export default function AdminTestimonials() {
 
   const [newTestimonial, setNewTestimonial] = useState<Testimonial>({
     order: 0, content: '', name: '', role: '', company: '', rating: 5
-  });
+  } as Testimonial);
 
   const prefillSample = () => {
-    const orderNum = testimonials.length > 0 ? Math.max(...testimonials.map(t => t.order)) + 1 : 0;
+    const orderNum = testimonials.length > 0 ? Math.max(...testimonials.map(t => t.order ?? 0)) + 1 : 0;
     const sample: Testimonial = {
       order: orderNum,
       content: lang === 'de' ? 'Dies ist ein Beispieltestimonial' : 'This is a sample testimonial',
@@ -184,9 +186,9 @@ export default function AdminTestimonials() {
 
   const onAdd = async () => {
     if (!hasToken) return alert('Admin token required');
-    if (newTestimonial.order < 0) return alert('Order must be non-negative');
-    const existingOrders = new Set(testimonials.map(t => t.order));
-    if (existingOrders.has(newTestimonial.order)) return alert(`Order ${newTestimonial.order} already exists for ${lang}.`);
+    if ((newTestimonial.order ?? 0) < 0) return alert('Order must be non-negative');
+    const existingOrders = new Set(testimonials.map(t => t.order ?? 0).filter(o => o !== undefined));
+    if (existingOrders.has(newTestimonial.order ?? 0)) return alert(`Order ${newTestimonial.order ?? 0} already exists for ${lang}.`);
     const err = validateCore(newTestimonial);
     if (err) return alert(err);
     const url = `${API_BASE}/api/admin/testimonials`;
@@ -334,7 +336,7 @@ export default function AdminTestimonials() {
             <input type="number" placeholder="Rating (1-5)" min={1} max={5} value={newTestimonial.rating} onChange={e => setNewTestimonial({ ...newTestimonial, rating: Math.max(1, Math.min(5, Number(e.target.value))) })} style={{ ...inputBase, width: 160 }} />
           </div>
           <div style={{ marginTop: 12 }}>
-            <button onClick={onAdd} disabled={newTestimonial.order < 0 || !hasToken} style={{ ...btnPrimary, opacity: newTestimonial.order >= 0 && hasToken ? 1 : 0.6 }}>Add Testimonial</button>
+            <button onClick={onAdd} disabled={(newTestimonial.order ?? 0) < 0 || !hasToken} style={{ ...btnPrimary, opacity: (newTestimonial.order ?? 0) >= 0 && hasToken ? 1 : 0.6 }}>Add Testimonial</button>
             <button onClick={prefillSample} style={{ ...btnSecondary, marginLeft: 8 }}>Prefill sample</button>
           </div>
         </div>
@@ -358,7 +360,7 @@ export default function AdminTestimonials() {
             </div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={prefillSample} style={{ ...btnSecondary }}>Prefill sample</button>
-              <button onClick={onAdd} disabled={newTestimonial.order < 0 || !hasToken} style={{ ...btnPrimary, opacity: newTestimonial.order >= 0 && hasToken ? 1 : 0.6 }}>Add Testimonial</button>
+              <button onClick={onAdd} disabled={(newTestimonial.order ?? 0) < 0 || !hasToken} style={{ ...btnPrimary, opacity: (newTestimonial.order ?? 0) >= 0 && hasToken ? 1 : 0.6 }}>Add Testimonial</button>
             </div>
           </div>
         </div>

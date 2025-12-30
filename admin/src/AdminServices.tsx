@@ -87,7 +87,7 @@ export default function AdminServices() {
       const res = await fetch(`${API_BASE}/api/admin/services?lang=${lang}`, { headers: headers() });
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
       const data = await res.json();
-      const list: Service[] = Array.isArray(data.services) ? data.services.slice().sort((a: Service, b: Service) => a.order - b.order) : [];
+      const list: Service[] = Array.isArray(data.services) ? data.services.slice().sort((a: Service, b: Service) => (a.order ?? 0) - (b.order ?? 0)) : [];
       setServices(list);
       setOriginalServices(JSON.parse(JSON.stringify(list)) as Service[]);
     } catch (e: unknown) {
@@ -346,7 +346,7 @@ export default function AdminServices() {
             <AdminInput placeholder="Benefit" value={newService.benefit} onChange={e => setNewService({ ...newService, benefit: e.target.value })} className="flex-1 min-w-[260px]" />
           </div>
           <div className="mt-3 flex items-center gap-3">
-            <ActionButton onClick={onAdd} disabled={newService.order < 0 || !hasToken}>Add Service</ActionButton>
+            <ActionButton onClick={onAdd} disabled={(newService.order ?? 0) < 0 || !hasToken}>Add Service</ActionButton>
             <ActionButton variant="secondary" onClick={prefillSample}>Prefill sample</ActionButton>
           </div>
         </div>
@@ -385,7 +385,7 @@ export default function AdminServices() {
             </div>
             <div className="flex items-center gap-3 justify-end pt-4">
               <ActionButton variant="secondary" onClick={prefillSample}>Prefill Sample</ActionButton>
-              <ActionButton variant="primary" onClick={onAdd} disabled={!hasToken || newService.order < 0}>Add Service</ActionButton>
+              <ActionButton variant="primary" onClick={onAdd} disabled={!hasToken || (newService.order ?? 0) < 0}>Add Service</ActionButton>
             </div>
           </div>
         </div>

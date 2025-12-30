@@ -61,12 +61,13 @@ export async function updateTestimonial(req, res) {
   try {
     const { lang = 'en', updates = {} } = req.body || {};
     const Testimonial = await getTenantModel(req.tenantId, 'Testimonial', TestimonialSchema);
-    const order = parseInt(req.params.order);
-    if (isNaN(order)) {
-      return res.status(400).json({ error: 'Invalid order' });
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: 'Invalid testimonial ID' });
     }
+    
     const updated = await Testimonial.findOneAndUpdate(
-      { lang: lang.toLowerCase(), order },
+      { _id: id, lang: lang.toLowerCase() },
       { $set: updates },
       { new: true }
     ).lean();
@@ -83,11 +84,11 @@ export async function deleteTestimonial(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
     const Testimonial = await getTenantModel(req.tenantId, 'Testimonial', TestimonialSchema);
-    const order = parseInt(req.params.order);
-    if (isNaN(order)) {
-      return res.status(400).json({ error: 'Invalid order' });
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: 'Invalid testimonial ID' });
     }
-    const result = await Testimonial.deleteOne({ lang, order });
+    const result = await Testimonial.deleteOne({ _id: id, lang });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'not found' });
     return res.json({ message: 'deleted' });
   } catch (err) {
