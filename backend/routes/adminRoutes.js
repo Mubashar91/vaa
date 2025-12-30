@@ -34,11 +34,11 @@ router.delete('/how-it-works/:stepNumber', deleteStep);
 
 // FAQ routes
 router.options('/faq', (_req, res) => res.sendStatus(204));
-router.options('/faq/:order', (_req, res) => res.sendStatus(204));
+router.options('/faq/:id', (_req, res) => res.sendStatus(204));
 router.get('/faq', listFAQs);
 router.post('/faq', createFAQ);
-router.put('/faq/:order', updateFAQ);
-router.delete('/faq/:order', deleteFAQ);
+router.put('/faq/:id', updateFAQ);
+router.delete('/faq/:id', deleteFAQ);
 
 // Services routes
 router.options('/services', (_req, res) => res.sendStatus(204));

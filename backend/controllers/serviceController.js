@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import ServiceSchema from '../models/Service.js';
 import { getTenantModel } from '../utils/tenantManager.js';
 
@@ -80,7 +81,7 @@ export async function updateService(req, res) {
     }
     
     const updated = await Service.findOneAndUpdate(
-      { _id: id, lang: lang.toLowerCase() },
+      { _id: new mongoose.Types.ObjectId(id), lang: lang.toLowerCase() },
       { $set: updates },
       { new: true }
     ).lean();
@@ -101,7 +102,7 @@ export async function deleteService(req, res) {
     if (!id) {
       return res.status(400).json({ error: 'Invalid service ID' });
     }
-    const result = await Service.deleteOne({ _id: id, lang });
+    const result = await Service.deleteOne({ _id: new mongoose.Types.ObjectId(id), lang });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'not found' });
     return res.json({ message: 'deleted' });
   } catch (err) {
