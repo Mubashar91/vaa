@@ -8,13 +8,13 @@ const TestimonialSchema = new mongoose.Schema(
     role: { type: String, required: true },
     company: { type: String, required: true },
     rating: { type: Number, min: 1, max: 5, default: 5 },
-    order: { type: Number, required: true, min: 0 },
+    order: { type: Number, min: 0 }, // Made optional
   },
   { timestamps: true }
 );
 
-// Ensure unique order per language
-TestimonialSchema.index({ lang: 1, order: 1 }, { unique: true });
+// Remove unique order constraint since it's optional
+// TestimonialSchema.index({ lang: 1, order: 1 }, { unique: true });
 
 export default TestimonialSchema;
 
