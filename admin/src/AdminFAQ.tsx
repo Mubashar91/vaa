@@ -6,7 +6,7 @@ type Lang = 'en' | 'de';
 
 interface FAQItem {
   _id?: string;
-  order: number;
+  order?: number;
   question: string;
   answer: string;
 }
@@ -83,7 +83,7 @@ export default function AdminFAQ() {
       }
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
       const data = await res.json();
-      const list: FAQItem[] = Array.isArray(data.faqs) ? data.faqs.slice().sort((a: FAQItem, b: FAQItem) => a.order - b.order) : [];
+      const list: FAQItem[] = Array.isArray(data.faqs) ? data.faqs.slice().sort((a: FAQItem, b: FAQItem) => (a.order ?? 0) - (b.order ?? 0)) : [];
       setFaqs(list);
       setOriginalFaqs(JSON.parse(JSON.stringify(list)) as FAQItem[]);
     } catch (e: unknown) {
@@ -103,7 +103,7 @@ export default function AdminFAQ() {
   };
 
   const validateCore = (f: Pick<FAQItem, 'order'|'question'|'answer'>) => {
-    if (f.order < 0) return 'Order must be non-negative';
+    if ((f.order ?? 0) < 0) return 'Order must be non-negative';
     if (!f.question.trim()) return 'Question is required';
     if (!f.answer.trim()) return 'Answer is required';
     return null;
@@ -127,12 +127,13 @@ export default function AdminFAQ() {
     const err = validateCore(f);
     if (err) return pushToast(err, 'error');
     if (!hasToken) return pushToast('Admin token required', 'error');
-    const updates: Partial<Omit<FAQItem, 'order'>> = {
+    if (!f._id) return pushToast('FAQ ID is required', 'error');
+    const updates: Partial<Omit<FAQItem, '_id'>> = {
       question: f.question,
       answer: f.answer,
     };
-    const url = `${API_BASE}/api/admin/faq/${f.order}`;
-    setSavingOrder(f.order);
+    const url = `${API_BASE}/api/admin/faq/${f._id}`;
+    setSavingOrder(f.order ?? 0);
     try {
       const res = await fetch(url, {
         method: 'PUT',
@@ -153,7 +154,8 @@ export default function AdminFAQ() {
 
   const onDelete = async (f: FAQItem) => {
     if (!hasToken) return pushToast('Admin token required', 'error');
-    const url = `${API_BASE}/api/admin/faq/${f.order}?lang=${lang}`;
+    if (!f._id) return pushToast('FAQ ID is required', 'error');
+    const url = `${API_BASE}/api/admin/faq/${f._id}?lang=${lang}`;
     const res = await fetch(url, {
       method: 'DELETE', headers: headers()
     });
@@ -171,11 +173,11 @@ export default function AdminFAQ() {
   });
 
   const prefillSample = () => {
-    const orderNum = faqs.length > 0 ? Math.max(...faqs.map(f => f.order)) + 1 : 0;
+    const orderNum = faqs.length > 0 ? Math.max(...faqs.map(f => f.order ?? 0)) + 1 : 0;
     const sample: FAQItem = {
       order: orderNum,
       question: lang === 'de' ? 'Beispiel Frage?' : 'Sample Question?',
-      answer: lang === 'de' ? 'Dies ist eine Beispielantwort' : 'This is a sample answer',
+      answer: lang === 'de' ? 'Dies ist eine Beispielantwort.' : 'This is a sample answer.',
     };
     setNewFAQ(sample);
   };
@@ -185,13 +187,13 @@ export default function AdminFAQ() {
       pushToast('Admin token required', 'error');
       return;
     }
-    if (newFAQ.order < 0) {
+    if ((newFAQ.order ?? 0) < 0) {
       pushToast('Order must be non-negative', 'error');
       return;
     }
-    const existingOrders = new Set(faqs.map(f => f.order));
-    if (existingOrders.has(newFAQ.order)) {
-      pushToast(`Order ${newFAQ.order} already exists for ${lang}`, 'error');
+    const existingOrders = new Set(faqs.map(f => f.order ?? 0));
+    if (existingOrders.has(newFAQ.order ?? 0)) {
+      pushToast(`Order ${newFAQ.order ?? 0} already exists for ${lang}`, 'error');
       return;
     }
     const err = validateCore(newFAQ);
@@ -321,7 +323,7 @@ export default function AdminFAQ() {
               <div className="text-sm text-slate-400">
                 Showing {faqs.filter((f, idx) => {
                   const q = query.trim().toLowerCase();
-                  return !q || [String(f.order), f.question, f.answer].join(' ').toLowerCase().includes(q);
+                  return !q || [String(f.order ?? 0), f.question, f.answer].join(' ').toLowerCase().includes(q);
                 }).length} of {faqs.length}
               </div>
             )}
@@ -344,12 +346,12 @@ export default function AdminFAQ() {
                 <tbody className="divide-y divide-slate-700/30">
                   {faqs.map((f, idx) => {
                     const q = query.trim().toLowerCase();
-                    const matches = !q || [String(f.order), f.question, f.answer].join(' ').toLowerCase().includes(q);
+                    const matches = !q || [String(f.order ?? 0), f.question, f.answer].join(' ').toLowerCase().includes(q);
                     if (!matches) return null;
                     const dirty = isDirty(idx);
                     return (
                       <tr
-                        key={f._id || f.order}
+                        key={f._id || (f.order ?? 0)}
                         onMouseEnter={() => setHoverRow(idx)}
                         onMouseLeave={() => setHoverRow(null)}
                         onClick={() => { setEditTarget(f); setEditingFAQ({ ...f }); }}
@@ -393,7 +395,7 @@ export default function AdminFAQ() {
                               size="sm"
                               onClick={() => onSave(f)}
                               disabled={!hasToken || !dirty}
-                              loading={savingOrder === f.order}
+                              loading={savingOrder === (f.order ?? 0)}
                               icon={Save}
                             >
                               Save

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import FAQSchema from '../models/FAQ.js';
 import { getTenantModel } from '../utils/tenantManager.js';
 
@@ -63,12 +64,13 @@ export async function updateFAQ(req, res) {
   try {
     const { lang = 'en', updates = {} } = req.body || {};
     const FAQ = await getTenantModel(req.tenantId, 'FAQ', FAQSchema);
-    const order = parseInt(req.params.order);
-    if (isNaN(order)) {
-      return res.status(400).json({ error: 'Invalid order' });
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: 'Invalid FAQ ID' });
     }
+    
     const updated = await FAQ.findOneAndUpdate(
-      { lang: lang.toLowerCase(), order },
+      { _id: new mongoose.Types.ObjectId(id), lang: lang.toLowerCase() },
       { $set: updates },
       { new: true }
     ).lean();
@@ -85,11 +87,11 @@ export async function deleteFAQ(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
     const FAQ = await getTenantModel(req.tenantId, 'FAQ', FAQSchema);
-    const order = parseInt(req.params.order);
-    if (isNaN(order)) {
-      return res.status(400).json({ error: 'Invalid order' });
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: 'Invalid FAQ ID' });
     }
-    const result = await FAQ.deleteOne({ lang, order });
+    const result = await FAQ.deleteOne({ _id: new mongoose.Types.ObjectId(id), lang });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'not found' });
     return res.json({ message: 'deleted' });
   } catch (err) {
