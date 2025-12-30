@@ -74,12 +74,13 @@ export async function updateService(req, res) {
   try {
     const { lang = 'en', updates = {} } = req.body || {};
     const Service = await getTenantModel(req.tenantId, 'Service', ServiceSchema);
-    const order = parseInt(req.params.order);
-    if (isNaN(order)) {
-      return res.status(400).json({ error: 'Invalid order' });
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: 'Invalid service ID' });
     }
+    
     const updated = await Service.findOneAndUpdate(
-      { lang: lang.toLowerCase(), order },
+      { _id: id, lang: lang.toLowerCase() },
       { $set: updates },
       { new: true }
     ).lean();
@@ -96,11 +97,11 @@ export async function deleteService(req, res) {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
     const Service = await getTenantModel(req.tenantId, 'Service', ServiceSchema);
-    const order = parseInt(req.params.order);
-    if (isNaN(order)) {
-      return res.status(400).json({ error: 'Invalid order' });
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: 'Invalid service ID' });
     }
-    const result = await Service.deleteOne({ lang, order });
+    const result = await Service.deleteOne({ _id: id, lang });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'not found' });
     return res.json({ message: 'deleted' });
   } catch (err) {

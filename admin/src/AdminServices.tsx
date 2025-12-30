@@ -5,7 +5,7 @@ type Lang = 'en' | 'de';
 
 interface Service {
   _id?: string;
-  order: number;
+  order?: number;
   title: string;
   description: string;
   benefit: string;
@@ -107,7 +107,7 @@ export default function AdminServices() {
   };
 
   const validateCore = (s: Pick<Service, 'order'|'title'|'description'|'benefit'|'icon'>) => {
-    if (s.order < 0) return 'Order must be non-negative';
+    if ((s.order ?? 0) < 0) return 'Order must be non-negative';
     if (!s.title.trim()) return 'Title is required';
     if (!s.description.trim()) return 'Description is required';
     if (!s.benefit.trim()) return 'Benefit is required';
@@ -134,14 +134,15 @@ export default function AdminServices() {
     const err = validateCore(s);
     if (err) return alert(err);
     if (!hasToken) return alert('Admin token required');
-    const updates: Partial<Omit<Service, 'order'>> = {
+    if (!s._id) return alert('Service ID is required');
+    const updates: Partial<Omit<Service, '_id'>> = {
       title: s.title,
       description: s.description,
       benefit: s.benefit,
       icon: s.icon,
     };
-    const url = `${API_BASE}/api/admin/services/${s.order}`;
-    setSavingOrder(s.order);
+    const url = `${API_BASE}/api/admin/services/${s._id}`;
+    setSavingOrder(s.order || 0);
     const res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...headers() },
@@ -155,7 +156,8 @@ export default function AdminServices() {
 
   const onDelete = async (s: Service) => {
     if (!hasToken) return alert('Admin token required');
-    const url = `${API_BASE}/api/admin/services/${s.order}?lang=${lang}`;
+    if (!s._id) return alert('Service ID is required');
+    const url = `${API_BASE}/api/admin/services/${s._id}?lang=${lang}`;
     const res = await fetch(url, {
       method: 'DELETE', headers: headers()
     });
@@ -166,10 +168,10 @@ export default function AdminServices() {
 
   const [newService, setNewService] = useState<Service>({
     order: 0, title: '', description: '', benefit: '', icon: 'Instagram'
-  });
+  } as Service);
 
   const prefillSample = () => {
-    const orderNum = services.length > 0 ? Math.max(...services.map(s => s.order)) + 1 : 0;
+    const orderNum = services.length > 0 ? Math.max(...services.map(s => s.order ?? 0)) + 1 : 0;
     const sample: Service = {
       order: orderNum,
       title: lang === 'de' ? 'Beispiel Service' : 'Sample Service',
@@ -182,9 +184,9 @@ export default function AdminServices() {
 
   const onAdd = async () => {
     if (!hasToken) return alert('Admin token required');
-    if (newService.order < 0) return alert('Order must be non-negative');
-    const existingOrders = new Set(services.map(s => s.order));
-    if (existingOrders.has(newService.order)) return alert(`Order ${newService.order} already exists for ${lang}.`);
+    if ((newService.order ?? 0) < 0) return alert('Order must be non-negative');
+    const existingOrders = new Set(services.map(s => s.order ?? 0).filter(o => o !== undefined));
+    if (existingOrders.has(newService.order ?? 0)) return alert(`Order ${newService.order ?? 0} already exists for ${lang}.`);
     const err = validateCore(newService);
     if (err) return alert(err);
     const url = `${API_BASE}/api/admin/services`;
@@ -398,7 +400,7 @@ export default function AdminServices() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField label="Order">
-                <AdminInput type="number" value={editingService.order} disabled className="font-mono" />
+                <AdminInput type="number" value={editingService.order} onChange={e => setEditingService({ ...editingService, order: Number((e.target as HTMLInputElement).value) })} />
               </FormField>
               <FormField label="Icon">
                 <AdminSelect value={editingService.icon} onChange={e => setEditingService({ ...editingService, icon: (e.target as HTMLSelectElement).value })}>
@@ -441,6 +443,6 @@ export default function AdminServices() {
 }
 
 function isEqualService(a: Service, b: Service) {
-  return a.order===b.order && a.title===b.title && a.description===b.description && a.benefit===b.benefit && (a.icon||'')===(b.icon||'');
+  return (a.order ?? 0)===(b.order ?? 0) && a.title===b.title && a.description===b.description && a.benefit===b.benefit && (a.icon||'')===(b.icon||'');
 }
 

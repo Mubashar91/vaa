@@ -42,11 +42,11 @@ router.delete('/faq/:order', deleteFAQ);
 
 // Services routes
 router.options('/services', (_req, res) => res.sendStatus(204));
-router.options('/services/:order', (_req, res) => res.sendStatus(204));
+router.options('/services/:id', (_req, res) => res.sendStatus(204));
 router.get('/services', listServices);
 router.post('/services', createService);
-router.put('/services/:order', updateService);
-router.delete('/services/:order', deleteService);
+router.put('/services/:id', updateService);
+router.delete('/services/:id', deleteService);
 
 // Testimonials routes
 router.options('/testimonials', (_req, res) => res.sendStatus(204));
