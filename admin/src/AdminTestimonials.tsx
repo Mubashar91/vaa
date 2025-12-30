@@ -135,6 +135,7 @@ export default function AdminTestimonials() {
     if (err) return alert(err);
     if (!hasToken) return alert('Admin token required');
     if (!t._id) return alert('Testimonial ID is required');
+    
     const updates: Partial<Omit<Testimonial, '_id'>> = {
       content: t.content,
       name: t.name,
@@ -143,11 +144,13 @@ export default function AdminTestimonials() {
       rating: t.rating,
     };
     const url = `${API_BASE}/api/admin/testimonials/${t._id}`;
+    const payload = { lang, updates };
+    console.log('[AdminTestimonials] Saving testimonial:', { _id: t._id, url, payload });
     setSavingOrder(t.order ?? 0);
     const res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...headers() },
-      body: JSON.stringify({ lang, updates }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) { await logHttpError(res, `PUT ${url}`); setSavingOrder(null); return alert('Save failed: ' + res.status); }
     await load();
@@ -385,7 +388,16 @@ export default function AdminTestimonials() {
             </div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => { setEditTarget(null); setEditingTestimonial(null); }} style={btnSecondary}>Cancel</button>
-              <button onClick={() => { if (editingTestimonial) void onSave(editingTestimonial); setEditTarget(null); setEditingTestimonial(null); }} disabled={!hasToken} style={btnPrimary}>Save Changes</button>
+              <button onClick={() => { 
+                if (editingTestimonial && editTarget) {
+                  const testimonialToSave = { 
+                    ...editingTestimonial, 
+                    _id: editTarget._id
+                  };
+                  void onSave(testimonialToSave); 
+                }
+                setEditTarget(null); setEditingTestimonial(null); 
+              }} disabled={!hasToken} style={btnPrimary}>Save Changes</button>
             </div>
           </div>
         </div>
