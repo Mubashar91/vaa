@@ -82,7 +82,7 @@ jobs:
 
             # Health check
             echo "🏥 Running health check..."
-            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5001/health)
+            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5001/health || echo "000")
 
             if [ "$HEALTH_STATUS" -eq 200 ]; then
               echo "✅ Deployment successful! Application is healthy."
