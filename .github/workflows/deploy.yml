@@ -71,14 +71,23 @@ jobs:
 
             # Restart application with PM2
             echo "🔄 Restarting application..."
-            pm2 restart vaa-backend || pm2 start ecosystem.config.cjs
+            
+            # Flush old logs to see fresh errors
+            pm2 flush vaa-backend 2>/dev/null || echo "No existing logs to flush"
+            
+            # Stop first to ensure clean restart
+            pm2 stop vaa-backend 2>/dev/null || echo "App not running, will start fresh"
+            pm2 delete vaa-backend 2>/dev/null || echo "No existing process to delete"
+            
+            # Start fresh
+            pm2 start ecosystem.config.cjs
 
             # Save PM2 configuration
             pm2 save
 
             # Wait for application to start
             echo "⏳ Waiting for application to start..."
-            sleep 5
+            sleep 10
 
             # Health check
             echo "🏥 Running health check..."
