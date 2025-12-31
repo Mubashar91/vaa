@@ -82,13 +82,28 @@ jobs:
 
             # Health check
             echo "🏥 Running health check..."
-            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5001/health || echo "000")
-
-            if [ "$HEALTH_STATUS" -eq 200 ]; then
+            
+            # Debug: Check if port is listening
+            echo "Checking if port 5001 is listening..."
+            ss -tulpn | grep :5001 || netstat -tulpn | grep :5001 || echo "Port check command failed"
+            
+            # Debug: Try curl with verbose output first
+            echo "Testing curl connection..."
+            curl -v --max-time 3 http://127.0.0.1:5001/health 2>&1 | head -20 || echo "Verbose curl failed"
+            
+            echo "Running actual health check..."
+            HEALTH_STATUS=$(curl -s --max-time 3 -o /dev/null -w "%{http_code}" http://127.0.0.1:5001/health 2>/dev/null || echo "000")
+            
+            echo "Health check status: '$HEALTH_STATUS'"
+            
+            if [ "$HEALTH_STATUS" = "200" ]; then
               echo "✅ Deployment successful! Application is healthy."
               pm2 list
             else
               echo "❌ Deployment failed! Health check returned status: $HEALTH_STATUS"
+              echo "PM2 status:"
+              pm2 list
+              echo "Last 50 log lines:"
               pm2 logs vaa-backend --lines 50
               exit 1
             fi
