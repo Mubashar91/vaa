@@ -5,7 +5,6 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import connectDB from './config/db.js';
 import pricingRoutes from './routes/pricingRoutes.js';
 import howItWorksRoutes from './routes/howItWorksRoutes.js';
 import faqRoutes from './routes/faqRoutes.js';
@@ -88,37 +87,16 @@ app.get('/admin', (_req, res) => {
 const PORT = process.env.PORT || 5001;
 
 async function start() {
-  // Check required environment variables
-  if (!process.env.MONGO_URI) {
-    console.error('❌ ERROR: MONGO_URI environment variable is required');
-    console.error('Please set MONGO_URI in Railway environment variables');
-    process.exit(1);
-  }
+  const corsOrigins = configuredOrigins.length ? configuredOrigins : ['(dev: localhost:517x)'];
+  const adminTokenSet = !!process.env.ADMIN_TOKEN;
 
-  try {
-    // console.log('🔄 Connecting to MongoDB...');
-    // await connectDB(process.env.MONGO_URI);
-
-    const corsOrigins = configuredOrigins.length ? configuredOrigins : ['(dev: localhost:517x)'];
-    const adminTokenSet = !!process.env.ADMIN_TOKEN;
-
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log('✅ Server started successfully!');
-      console.log(`🌐 Server listening on port ${PORT}`);
-      console.log(`📋 CORS origins: ${corsOrigins.join(', ')}`);
-      console.log(`🔐 ADMIN_TOKEN configured: ${adminTokenSet ? 'yes' : 'no'}`);
-      console.log(`🏥 Health check: http://0.0.0.0:${PORT}/health`);
-    });
-
-  } catch (err) {
-    console.error('❌ Failed to start server:', err.message);
-    console.error('Stack trace:', err.stack);
-    console.error('\n💡 Troubleshooting:');
-    console.error('1. Check MONGO_URI is correct in Railway environment variables');
-    console.error('2. Verify MongoDB Atlas network access allows Railway IPs');
-    console.error('3. Check MongoDB connection string format');
-    process.exit(1);
-  }
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log('✅ Server started successfully!');
+    console.log(`🌐 Server listening on port ${PORT}`);
+    console.log(`📋 CORS origins: ${corsOrigins.join(', ')}`);
+    console.log(`🔐 ADMIN_TOKEN configured: ${adminTokenSet ? 'yes' : 'no'}`);
+    console.log(`🏥 Health check: http://0.0.0.0:${PORT}/health`);
+  });
 }
 
 // Handle unhandled promise rejections

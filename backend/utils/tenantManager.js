@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { getTenantConfig } from '../config/tenants.js';
 
-// Schemas need to be imported here or passed in. 
+// Schemas need to be imported here or passed in. .
 // A better pattern is to pass the Schema object to getTenantModel.
 
 const connectionPool = new Map();
