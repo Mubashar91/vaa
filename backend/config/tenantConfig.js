@@ -18,8 +18,8 @@ export const tenants = {
         uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
         dbName: "socal_media_agency"
     },
-       "email": {
+     "Email": {
         uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
-        dbName: "email"
-     }
+        dbName: "Email"
+    }
 };
