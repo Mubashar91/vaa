@@ -21,5 +21,9 @@ export const tenants = {
      "Email": {
         uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
         dbName: "Email"
+    },
+       "admin": {
+        uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
+        dbName: "admin"
     }
 };
