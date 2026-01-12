@@ -25,5 +25,15 @@ export const tenants = {
        "admin": {
         uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
         dbName: "admin"
+    } ,
+       "ugc": {
+        uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
+        dbName: "ugc"
+    },
+        "video-editing": {
+        uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
+        dbName: "video-editing"
     }
+
+
 };

@@ -68,16 +68,8 @@ const en = {
     }
   },
   hero: {
-    title: "Scale Your Business with Dedicated Virtual Assistants",
-    subtitle: "Hire pre-vetted, German-speaking virtual assistants for 80% less than local hires. Scale your team in days, not months.",
-    ctaPrimary: "Get Started Today",
-    ctaSecondary: "How It Works",
-    tagline: "Trusted by 200+ Growing Businesses",
-    stats: {
-      clients: "Clients",
-      costSaved: "Cost Saved",
-      rating: "Rating"
-    }
+    // Removed hardcoded data - now fetched from database via API
+    urgency: "Limited Offer"
   },
   services: {
     title: "Our Services",
@@ -406,16 +398,8 @@ const de = {
     bookMeeting: "Termin vereinbaren"
   },
   hero: {
-    title: "Skalieren Sie Ihr Unternehmen mit virtuellen Assistenten",
-    subtitle: "Engagieren Sie geprüfte, deutschsprachige virtuelle Assistenten für 80% weniger als lokale Mitarbeiter. Skalieren Sie Ihr Team in Tagen, nicht in Monaten.",
-    ctaPrimary: "Jetzt loslegen",
-    ctaSecondary: "Mehr erfahren",
-    tagline: "Vertrauen Sie auf über 200 wachsende Unternehmen",
-    stats: {
-      clients: "Kunden",
-      costSaved: "Kosteneinsparung",
-      rating: "Bewertung"
-    }
+    // Removed hardcoded data - now fetched from database via API
+    urgency: "Begrenztes Angebot"
   },
   services: {
     title: "Unsere Dienstleistungen",

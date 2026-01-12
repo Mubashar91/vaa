@@ -83,17 +83,17 @@ export const Hero = () => {
     fetchHero();
   }, [currentLang]);
 
-  // Use fetched data or fallback to translations
-  const title = heroData?.title || t('hero.title');
-  const subtitle = heroData?.subtitle || t('hero.subtitle');
-  const tagline = heroData?.tagline || t('hero.tagline');
+  // Use fetched data or fallback to default values
+  const title = heroData?.title || "Scale Your Business with Dedicated Virtual Assistants";
+  const subtitle = heroData?.subtitle || "Hire pre-vetted, German-speaking virtual assistants for 80% less than local hires. Scale your team in days, not months.";
+  const tagline = heroData?.tagline || "Trusted by 200+ Growing Businesses";
   const heroImage = heroData?.image || "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&h=900&fit=crop&q=80";
-  const ctaPrimary = heroData?.ctaPrimary || t('hero.ctaPrimary');
-  const urgency = heroData?.urgency || t('hero.urgency');
+  const ctaPrimary = heroData?.ctaPrimary || "Get Started Today";
+  const urgency = heroData?.urgency || t('hero.urgency') || "Limited Offer";
   const stats = heroData?.stats || {
-    clients: t('hero.stats.clients'),
-    costSaved: t('hero.stats.costSaved'),
-    rating: t('hero.stats.rating'),
+    clients: "200+",
+    costSaved: "70%",
+    rating: "4.9/5",
   };
 
   if (loading) {
@@ -449,7 +449,7 @@ export const Hero = () => {
                     >
                       <Users className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1 text-gold/70 group-hover/stat:text-gold transition-colors" aria-hidden="true" />
                       <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold bg-gradient-to-r from-gold to-yellow-400 bg-clip-text text-transparent">{stats.clients}</div>
-                      <div className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground font-medium">{t('hero.stats.clients')}</div>
+                      <div className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground font-medium">{currentLang === 'de' ? 'Kunden' : 'Clients'}</div>
                     </motion.div>
                   </motion.div>
                   
@@ -466,7 +466,7 @@ export const Hero = () => {
                     >
                       <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1 text-gold/70 group-hover/stat:text-gold transition-colors" aria-hidden="true" />
                       <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold bg-gradient-to-r from-gold to-amber-400 bg-clip-text text-transparent">{stats.costSaved}</div>
-                      <div className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground font-medium">{t('hero.stats.costSaved')}</div>
+                      <div className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground font-medium">{currentLang === 'de' ? 'Kosteneinsparung' : 'Cost Saved'}</div>
                     </motion.div>
                   </motion.div>
                   
@@ -483,7 +483,7 @@ export const Hero = () => {
                     >
                       <Star className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1 text-gold/70 group-hover/stat:text-gold transition-colors fill-gold/20" aria-hidden="true" />
                       <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold bg-gradient-to-r from-yellow-400 to-gold bg-clip-text text-transparent">{stats.rating}</div>
-                      <div className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground font-medium">{t('hero.stats.rating')}</div>
+                      <div className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground font-medium">{currentLang === 'de' ? 'Bewertung' : 'Rating'}</div>
                     </motion.div>
                   </motion.div>
                 </div>
