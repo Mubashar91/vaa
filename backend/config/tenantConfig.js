@@ -70,5 +70,10 @@ export const tenants = {
         dbName: "socialmediaAccountmangement"
     },
 
+       "Don_agency": {
+        uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
+        dbName: "Don_agency"
+    },
+
 
 };
