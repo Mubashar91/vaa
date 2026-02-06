@@ -75,5 +75,5 @@ export const tenants = {
         dbName: "Don_agency"
     },
 
-    
+
 };
