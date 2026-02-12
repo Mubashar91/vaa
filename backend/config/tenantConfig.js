@@ -64,7 +64,7 @@ export const tenants = {
         uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
         dbName: "Social_media_Account_mangement"
     },
-
+ 
      "socialmediaAccountmangement": {
         uri: "mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0",
         dbName: "socialmediaAccountmangement"
