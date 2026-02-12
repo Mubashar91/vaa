@@ -3,7 +3,7 @@ import typography from "@tailwindcss/typography";
 import tailwindcssAnimate from "tailwindcss-animate";
 
 /** @type {import('tailwindcss').Config} */
-export default {
+export default {  
   darkMode: ["class"],
   content: [
     "./index.html",
