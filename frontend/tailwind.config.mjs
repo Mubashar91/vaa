@@ -7,9 +7,9 @@ export default {
   darkMode: ["class"],
   content: [
     "./index.html",
-    "./src/**/*.{ts,tsx,js,jsx}",
+    "./src/**/*.{ts,tsx,js,jsx}", 
   ],
-  theme: {
+  theme: {   
     extend: {
       colors: {
         border: "hsl(var(--border))",
