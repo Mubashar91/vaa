@@ -59,7 +59,16 @@ jobs:
               echo "♻️ Restoring .env..."
               mv "$TEMP_ENV_BACKUP" "$ENV_FILE"
             else
-               echo "⚠️ No backup found to restore."
+               echo "⚠️ No backup found to restore. Creating .env from template..."
+               # Create .env file with essential variables if no backup exists
+               cat > "$ENV_FILE" << EOF
+PORT=5001
+NODE_ENV=production
+MONGO_URI=mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0
+ADMIN_TOKEN=${{ secrets.ADMIN_TOKEN }}
+JWT_SECRET=${{ secrets.JWT_SECRET }}
+CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
+EOF
             fi
 
             # Navigate to backend for install/restart
