@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const HeroSchema = new mongoose.Schema(
   {
-    lang: { type: String, enum: ['en', 'de'], required: true, index: true, unique: true },
+    lang: { type: String, enum: ['en', 'de'], required: true, unique: true },
     title: { type: String, required: true },
     subtitle: { type: String, required: true },
     tagline: { type: String, required: true },
