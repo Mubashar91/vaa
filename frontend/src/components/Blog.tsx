@@ -4,6 +4,16 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 
+// Helper to create URL-friendly slug from title
+const slugify = (title: string) => {
+  return title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '') // Remove special chars
+    .replace(/\s+/g, '-')     // Replace spaces with hyphens
+    .replace(/-+/g, '-')       // Replace multiple hyphens with single
+    .trim();
+};
+
 // API Configuration
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
 
@@ -167,7 +177,7 @@ export const Blog = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
               className="group bg-card border border-border/50 rounded-xl sm:rounded-2xl overflow-hidden hover:border-gold/50 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] transition-all duration-300 cursor-pointer w-full"
-              onClick={() => navigate(`/blog/${post.blogId || post.id}`)}
+              onClick={() => navigate(`/blog/${slugify(post.title)}-${post.blogId || post.id}`)}
               whileHover={{ y: -8 }}
             >
               {/* Image */}

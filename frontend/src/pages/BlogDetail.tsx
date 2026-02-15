@@ -103,6 +103,9 @@ const BlogDetail = () => {
   const { id } = useParams();
   const { t, i18n } = useTranslation();
 
+  // Extract numeric ID from slug-title-id format
+  const blogId = id ? parseInt(id.split('-').pop() || id, 10) : undefined;
+
   const [currentLang, setCurrentLang] = useState(i18n.language);
   useEffect(() => {
     const handler = (lng: string) => setCurrentLang(lng);
@@ -110,8 +113,7 @@ const BlogDetail = () => {
     return () => {
       i18n.off('languageChanged', handler);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [blogId, i18n]);
 
   // Reading progress bar
   const { scrollYProgress } = useScroll();
@@ -129,8 +131,8 @@ const BlogDetail = () => {
       try {
         setLoading(true);
         const [enRes, deRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5001'}/api/blogs/${id}?lang=en`),
-          fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5001'}/api/blogs/${id}?lang=de`)
+          fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5001'}/api/blogs/${blogId}?lang=en`),
+          fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5001'}/api/blogs/${blogId}?lang=de`)
         ]);
         
         if (enRes.ok) {
@@ -199,11 +201,11 @@ const BlogDetail = () => {
       }
     };
 
-    if (id) fetchBlog();
-  }, [id, lang]);
+    if (blogId) fetchBlog();
+  }, [blogId, lang]);
 
   const currentPost = lang === 'de' && dePost ? dePost : post;
-  const currentIndex = allPosts.findIndex(p => p.id === Number(id));
+  const currentIndex = allPosts.findIndex(p => p.id === blogId);
   const prevPost = currentIndex > 0 ? allPosts[currentIndex - 1] : undefined;
   const nextPost = currentIndex >= 0 && currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : undefined;
 
