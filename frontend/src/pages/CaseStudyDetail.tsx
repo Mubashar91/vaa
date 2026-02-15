@@ -6,7 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { type CaseStudy } from "@/data/caseStudies";
 
 // API Configuration
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.don-va.com';
 
 interface CaseStudyFromAPI {
   caseStudyId: number;
@@ -27,6 +27,9 @@ const CaseStudyDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { t, i18n } = useTranslation();
+
+  // Extract numeric ID from slug-title-id format
+  const caseStudyId = id ? parseInt(id.split('-').pop() || id, 10) : undefined;
   const [caseStudy, setCaseStudy] = useState<CaseStudy | null>(null);
   const [allStudies, setAllStudies] = useState<CaseStudy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +64,7 @@ const CaseStudyDetail = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`${API_BASE}/api/case-studies/${id}?lang=${currentLang}`);
+        const response = await fetch(`${API_BASE}/api/case-studies/${caseStudyId}?lang=${currentLang}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch case study: ${response.status}`);
@@ -120,8 +123,8 @@ const CaseStudyDetail = () => {
       }
     };
 
-    if (id) fetchCaseStudy();
-  }, [id, currentLang, i18n]);
+    if (caseStudyId) fetchCaseStudy();
+  }, [caseStudyId, currentLang, i18n]);
 
   if (loading) {
     return (

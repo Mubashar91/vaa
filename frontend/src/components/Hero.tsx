@@ -5,7 +5,7 @@ import { ArrowRight, Calendar, Sparkles, TrendingUp, Users, Star, Award, Loader2
 import { useTranslation } from "react-i18next";
 
 // API Configuration
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.don-va.com';
 
 interface HeroData {
   title: string;

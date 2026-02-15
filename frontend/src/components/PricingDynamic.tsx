@@ -11,7 +11,7 @@ const BULK_DISCOUNT_THRESHOLD = 3;
 const BULK_DISCOUNT_RATE = 0.03;
 
 // API Configuration
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.don-va.com';
 
 // TypeScript Interface - matches API response
 interface PricingPlan {

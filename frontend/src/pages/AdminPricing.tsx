@@ -15,7 +15,7 @@ interface Plan {
 
 const API_BASE =
   ((import.meta as unknown) as { env?: Record<string, string> }).env?.VITE_API_BASE ||
-  'http://localhost:5001';
+  'https://api.don-va.com';
 
 export default function AdminPricing() {
   const [lang, setLang] = useState<Lang>('en');

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
 
-const API_BASE = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE || 'http://localhost:5001';
+const API_BASE = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE || 'https://api.don-va.com';
 
 export default function RequireAdmin({ children }: { children: React.ReactNode }) {
   const location = useLocation();

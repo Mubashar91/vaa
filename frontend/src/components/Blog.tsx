@@ -15,7 +15,7 @@ const slugify = (title: string) => {
 };
 
 // API Configuration
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.don-va.com';
 
 interface BlogPost {
   blogId: number;

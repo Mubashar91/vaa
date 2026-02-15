@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 
 // API Configuration
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.don-va.com';
 
 interface FAQItem {
   _id?: string;

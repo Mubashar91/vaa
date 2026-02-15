@@ -5,8 +5,18 @@ import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import { type CaseStudy } from "@/data/caseStudies";
 
+// Helper to create URL-friendly slug from title
+const slugify = (title: string) => {
+  return title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '') // Remove special chars
+    .replace(/\s+/g, '-')     // Replace spaces with hyphens
+    .replace(/-+/g, '-')       // Replace multiple hyphens with single
+    .trim();
+};
+
 // API Configuration
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.don-va.com';
 
 interface CaseStudyFromAPI {
   caseStudyId: number;
@@ -166,7 +176,7 @@ export const CaseStudies = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
               className="group bg-card border border-border/50 rounded-xl sm:rounded-2xl overflow-hidden hover:border-gold/50 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] transition-all duration-300 cursor-pointer w-full"
-              onClick={() => navigate(`/case-study/${study.id}`)}
+              onClick={() => navigate(`/case-study/${slugify(study.title)}-${study.id}`)}
               whileHover={{ y: -8 }}
             >
               {/* Image */}

@@ -131,8 +131,8 @@ const BlogDetail = () => {
       try {
         setLoading(true);
         const [enRes, deRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5001'}/api/blogs/${blogId}?lang=en`),
-          fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5001'}/api/blogs/${blogId}?lang=de`)
+          fetch(`${import.meta.env.VITE_API_BASE || 'https://api.don-va.com'}/api/blogs/${blogId}?lang=en`),
+          fetch(`${import.meta.env.VITE_API_BASE || 'https://api.don-va.com'}/api/blogs/${blogId}?lang=de`)
         ]);
         
         if (enRes.ok) {
@@ -172,7 +172,7 @@ const BlogDetail = () => {
         }
 
         // Fetch all posts for navigation
-        const allRes = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5001'}/api/blogs?lang=${lang}`);
+        const allRes = await fetch(`${import.meta.env.VITE_API_BASE || 'https://api.don-va.com'}/api/blogs?lang=${lang}`);
         if (allRes.ok) {
           const allData = await allRes.json();
           const allBlogs = Array.isArray(allData.blogs) ? allData.blogs.map((b: any): BlogPost => ({
