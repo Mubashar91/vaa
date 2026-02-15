@@ -1,0 +1,14 @@
+{
+  "name": "Donva Admin",
+  "short_name": "Donva Admin",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "theme_color": "#EF4444",
+  "background_color": "#ffffff",
+  "display": "standalone"
+}

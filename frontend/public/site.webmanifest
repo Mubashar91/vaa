@@ -1,0 +1,14 @@
+{
+  "name": "Donva",
+  "short_name": "Donva",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "theme_color": "#FACC15",
+  "background_color": "#ffffff",
+  "display": "standalone"
+}
