@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +36,59 @@ type FormValues = {
 
 const Contact = () => {
   const { t } = useTranslation();
+  useEffect(() => {
+    document.title = "Contact Us - Donva";
+    const description = "Get in touch with Donva. We'll help you find the right virtual assistant for your business needs.";
+    let descMeta = document.querySelector('meta[name="description"]');
+    if (!descMeta) {
+      descMeta = document.createElement('meta');
+      descMeta.setAttribute('name', 'description');
+      document.head.appendChild(descMeta);
+    }
+    descMeta.setAttribute('content', description);
+
+    // Canonical
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.setAttribute('rel', 'canonical');
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute('href', 'https://don-va.com/contact');
+
+    // OpenGraph
+    const ogTags = [
+      { property: 'og:title', content: 'Contact Us - Donva' },
+      { property: 'og:description', content: description },
+      { property: 'og:url', content: 'https://don-va.com/contact' },
+      { property: 'og:type', content: 'website' },
+    ];
+    ogTags.forEach(({ property, content }) => {
+      let tag = document.querySelector(`meta[property="${property}"]`);
+      if (!tag) {
+        tag = document.createElement('meta');
+        tag.setAttribute('property', property);
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute('content', content);
+    });
+
+    // Twitter
+    const twitterTags = [
+      { name: 'twitter:card', content: 'summary' },
+      { name: 'twitter:title', content: 'Contact Us - Donva' },
+      { name: 'twitter:description', content: description },
+    ];
+    twitterTags.forEach(({ name, content }) => {
+      let tag = document.querySelector(`meta[name="${name}"]`);
+      if (!tag) {
+        tag = document.createElement('meta');
+        tag.setAttribute('name', name);
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute('content', content);
+    });
+  }, []);
   const {
     register,
     handleSubmit,

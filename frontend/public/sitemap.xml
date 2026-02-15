@@ -5,4 +5,53 @@
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+  <url>
+    <loc>https://don-va.com/contact</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://don-va.com/book-meeting</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- Add more static pages here if you create them later -->
+  <!-- Example: /about, /services, /pricing, /faq, /testimonials, /case-studies, /blog -->
+  <!-- Dynamic content placeholders (you can replace these with actual URLs once you have content) -->
+  <url>
+    <loc>https://don-va.com/blog</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://don-va.com/case-studies</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- If you later create static pages, add them here with appropriate priority/frequency -->
+  <!-- <url>
+    <loc>https://don-va.com/about</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://don-va.com/services</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://don-va.com/pricing</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://don-va.com/faq</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://don-va.com/testimonials</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url> -->
 </urlset>

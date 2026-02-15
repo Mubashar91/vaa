@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, Video, CheckCircle2, ArrowLeft, Menu, X, Phone, Mail, Star, Shield } from "lucide-react";
+import { Calendar, Clock, Video, CheckCircle2, ArrowLeft, Menu, X, Star, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
  
@@ -9,6 +9,60 @@ export const BookMeeting = () => {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.title = "Book a Meeting - Donva";
+    const description = "Schedule a free consultation with Donva. Find out how our virtual assistants can help scale your business.";
+    let descMeta = document.querySelector('meta[name="description"]');
+    if (!descMeta) {
+      descMeta = document.createElement('meta');
+      descMeta.setAttribute('name', 'description');
+      document.head.appendChild(descMeta);
+    }
+    descMeta.setAttribute('content', description);
+
+    // Canonical
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.setAttribute('rel', 'canonical');
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute('href', 'https://don-va.com/book-meeting');
+
+    // OpenGraph
+    const ogTags = [
+      { property: 'og:title', content: 'Book a Meeting - Donva' },
+      { property: 'og:description', content: description },
+      { property: 'og:url', content: 'https://don-va.com/book-meeting' },
+      { property: 'og:type', content: 'website' },
+    ];
+    ogTags.forEach(({ property, content }) => {
+      let tag = document.querySelector(`meta[property="${property}"]`);
+      if (!tag) {
+        tag = document.createElement('meta');
+        tag.setAttribute('property', property);
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute('content', content);
+    });
+
+    // Twitter
+    const twitterTags = [
+      { name: 'twitter:card', content: 'summary' },
+      { name: 'twitter:title', content: 'Book a Meeting - Donva' },
+      { name: 'twitter:description', content: description },
+    ];
+    twitterTags.forEach(({ name, content }) => {
+      let tag = document.querySelector(`meta[name="${name}"]`);
+      if (!tag) {
+        tag = document.createElement('meta');
+        tag.setAttribute('name', name);
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute('content', content);
+    });
+  }, []);
 
   useEffect(() => {
     // Load Calendly widget script
