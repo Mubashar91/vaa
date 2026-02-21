@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-
+ 
 const BlogSchema = new mongoose.Schema(
   {
     lang: { type: String, enum: ['en', 'de'], required: true, index: true },
