@@ -12,116 +12,87 @@ jobs:
   deploy:
     name: Deploy to Hostinger VPS
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.0
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script: |
-            set -e  # Exit immediately if a command exits with a non-zero status
+            set -e
+
             echo "🚀 Starting deployment..."
 
-            # Define paths
             REPO_DIR="/var/www/vaa-backend"
             BACKEND_DIR="$REPO_DIR/backend"
             ENV_FILE="$BACKEND_DIR/.env"
             TEMP_ENV_BACKUP="/tmp/vaa-backend.env.backup"
 
-            # Navigate to application directory
-            echo "📂 Navigating to repository..."
+            echo "📂 Navigating to repo..."
             cd $REPO_DIR
 
-            # Backup .env safely to /tmp
+            # Backup existing .env
             if [ -f "$ENV_FILE" ]; then
-              echo "💾 Backing up .env to safe location..."
+              echo "💾 Backing up .env..."
               cp "$ENV_FILE" "$TEMP_ENV_BACKUP"
-            else
-              echo "⚠️ No .env file found at $ENV_FILE. Skipping backup."
             fi
 
-            # Fetch and Reset
-            echo "📥 Fetching and resetting repository..."
-            # Fetch the specific branch
+            echo "📥 Fetching latest code..."
             git fetch origin mubii
-            # Reset hard to matches the remote state exactly
-            # This DISCARDS local changes and ignores merge conflicts by overwriting
             git reset --hard origin/mubii
 
-            # Restore .env
+            # Restore or create .env
             if [ -f "$TEMP_ENV_BACKUP" ]; then
               echo "♻️ Restoring .env..."
               mv "$TEMP_ENV_BACKUP" "$ENV_FILE"
             else
-               echo "⚠️ No backup found to restore. Creating .env from template..."
-               # Create .env file with essential variables if no backup exists
-               printf '%s\n' \
-                 "PORT=5001" \
-                 "NODE_ENV=production" \
-                 "MONGO_URI=mongodb+srv://mmubasharshahzad40_db_user:lecX9I03UTMWTnxn@cluster0.9r3kmcz.mongodb.net/?appName=Cluster0" \
-                 "ADMIN_TOKEN=${{ secrets.ADMIN_TOKEN }}" \
-                 "JWT_SECRET=${{ secrets.JWT_SECRET }}" \
-                 "CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}" \
-                 > "$ENV_FILE"
+              echo "🆕 Creating new .env..."
+
+              echo "PORT=5001" > "$ENV_FILE"
+              echo "NODE_ENV=production" >> "$ENV_FILE"
+              echo "MONGO_URI=$MONGO_URI" >> "$ENV_FILE"
+              echo "ADMIN_TOKEN=$ADMIN_TOKEN" >> "$ENV_FILE"
+              echo "JWT_SECRET=$JWT_SECRET" >> "$ENV_FILE"
+              echo "CORS_ORIGIN=$CORS_ORIGIN" >> "$ENV_FILE"
             fi
 
-            # Navigate to backend for install/restart
-            cd $BACKEND_DIR
-
-            # Install dependencies
             echo "📦 Installing dependencies..."
-            npm ci --production
+            cd $BACKEND_DIR
+            npm ci --omit=dev
 
-            # Restart application with PM2
-            echo "🔄 Restarting application..."
-            
-            # Flush old logs to see fresh errors
-            pm2 flush vaa-backend 2>/dev/null || echo "No existing logs to flush"
-            
-            # Stop first to ensure clean restart
-            pm2 stop vaa-backend 2>/dev/null || echo "App not running, will start fresh"
-            pm2 delete vaa-backend 2>/dev/null || echo "No existing process to delete"
-            
-            # Start fresh
+            echo "🔄 Restarting PM2..."
+
+            pm2 stop vaa-backend || true
+            pm2 delete vaa-backend || true
+
             pm2 start ecosystem.config.cjs
-
-            # Save PM2 configuration
             pm2 save
 
-            # Wait for application to start
-            echo "⏳ Waiting for application to start..."
+            echo "⏳ Waiting for app to boot..."
             sleep 10
 
-            # Health check
             echo "🏥 Running health check..."
-            
-            # Debug: Check if port is listening
-            echo "Checking if port 5001 is listening..."
-            ss -tulpn | grep :5001 || netstat -tulpn | grep :5001 || echo "Port check command failed"
-            
-            # Debug: Try curl with verbose output first
-            echo "Testing curl connection..."
-            curl -v --max-time 3 http://127.0.0.1:5001/health 2>&1 | head -20 || echo "Verbose curl failed"
-            
-            echo "Running actual health check..."
-            HEALTH_STATUS=$(curl -s --max-time 3 -o /dev/null -w "%{http_code}" http://127.0.0.1:5001/health 2>/dev/null || echo "000")
-            
-            echo "Health check status: '$HEALTH_STATUS'"
-            
-            if [ "$HEALTH_STATUS" = "200" ]; then
-              echo "✅ Deployment successful! Application is healthy."
+
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5001/health || echo "000")
+
+            echo "Health status: $STATUS"
+
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Deployment successful!"
               pm2 list
             else
-              echo "❌ Deployment failed! Health check returned status: $HEALTH_STATUS"
-              echo "PM2 status:"
-              pm2 list
-              echo "Last 50 log lines:"
+              echo "❌ Deployment failed!"
               pm2 logs vaa-backend --lines 50
               exit 1
             fi

@@ -8,7 +8,7 @@ const BlogSchema = new mongoose.Schema(
     excerpt: { type: String, required: true },
     content: { type: String, required: true }, // HTML content
     // Optional structured sections: stored alongside content for flexibility
-    sections: {
+    sections: { 
       type: [
         new mongoose.Schema(
           {
