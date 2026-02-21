@@ -9,7 +9,7 @@ const BlogSchema = new mongoose.Schema(
     content: { type: String, required: true }, // HTML content
     // Optional structured sections: stored alongside content for flexibility
     sections: { 
-      type: [
+      type: [ 
         new mongoose.Schema(
           {
             heading: { type: String, default: '' },

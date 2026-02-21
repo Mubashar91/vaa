@@ -34,13 +34,22 @@ jobs:
 
             echo "🚀 Starting deployment..."
 
-            REPO_DIR="/var/www/vaa-backend"
+            # CHANGED: Point to your REAL app location
+            REPO_DIR="/root/project/vaa"
             BACKEND_DIR="$REPO_DIR/backend"
             ENV_FILE="$BACKEND_DIR/.env"
-            TEMP_ENV_BACKUP="/tmp/vaa-backend.env.backup"
+            TEMP_ENV_BACKUP="/tmp/donva-api.env.backup"
 
             echo "📂 Navigating to repo..."
+            # Create directory if it doesn't exist
+            mkdir -p $REPO_DIR
             cd $REPO_DIR
+
+            # Clone if repo doesn't exist
+            if [ ! -d ".git" ]; then
+              echo "📥 Cloning repository for the first time..."
+              git clone https://github.com/Mubashar91/vaa.git .
+            fi
 
             # Backup existing .env
             if [ -f "$ENV_FILE" ]; then
@@ -58,13 +67,14 @@ jobs:
               mv "$TEMP_ENV_BACKUP" "$ENV_FILE"
             else
               echo "🆕 Creating new .env..."
-
-              echo "PORT=5001" > "$ENV_FILE"
-              echo "NODE_ENV=production" >> "$ENV_FILE"
-              echo "MONGO_URI=$MONGO_URI" >> "$ENV_FILE"
-              echo "ADMIN_TOKEN=$ADMIN_TOKEN" >> "$ENV_FILE"
-              echo "JWT_SECRET=$JWT_SECRET" >> "$ENV_FILE"
-              echo "CORS_ORIGIN=$CORS_ORIGIN" >> "$ENV_FILE"
+              {
+                echo "PORT=5001"
+                echo "NODE_ENV=production"
+                echo "MONGO_URI=$MONGO_URI"
+                echo "ADMIN_TOKEN=$ADMIN_TOKEN"
+                echo "JWT_SECRET=$JWT_SECRET"
+                echo "CORS_ORIGIN=$CORS_ORIGIN"
+              } > "$ENV_FILE"
             fi
 
             echo "📦 Installing dependencies..."
@@ -73,10 +83,12 @@ jobs:
 
             echo "🔄 Restarting PM2..."
 
-            pm2 stop vaa-backend || true
-            pm2 delete vaa-backend || true
+            # CHANGED: Use donva-api instead of vaa-backend
+            pm2 stop donva-api || true
+            pm2 delete donva-api || true
 
-            pm2 start ecosystem.config.cjs
+            # CHANGED: Start with npm start since that's how donva-api runs
+            pm2 start npm --name donva-api -- start
             pm2 save
 
             echo "⏳ Waiting for app to boot..."
@@ -93,7 +105,7 @@ jobs:
               pm2 list
             else
               echo "❌ Deployment failed!"
-              pm2 logs vaa-backend --lines 50
+              pm2 logs donva-api --lines 50
               exit 1
             fi
 
