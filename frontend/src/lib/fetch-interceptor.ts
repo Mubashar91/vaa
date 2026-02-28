@@ -14,10 +14,14 @@ window.fetch = async (...args) => {
     const API_BASE = import.meta.env.VITE_API_BASE || '';
     const TENANT_ID = import.meta.env.VITE_DATABASE || 'main';
 
-    // Only intercept requests to our API
+    // Only intercept requests to our API or common API patterns
     const resourceUrl = typeof resource === 'string' ? resource : resource instanceof URL ? resource.href : resource.url;
 
-    let isApiRequest = resourceUrl.includes(API_BASE) || resourceUrl.startsWith('/api');
+    let isApiRequest = resourceUrl.includes(API_BASE) || 
+                      resourceUrl.startsWith('/api') ||
+                      resourceUrl.includes('don-va.com') ||
+                      resourceUrl.includes('api.don-va.com') ||
+                      (!resourceUrl.startsWith('http') && (resourceUrl.includes('api') || resourceUrl.includes('/')));
 
     if (isApiRequest) {
         // Fix for missing protocol in VITE_API_BASE
