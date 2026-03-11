@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-
+ 
 const BlogSchema = new mongoose.Schema(
   {
     lang: { type: String, enum: ['en', 'de'], required: true, index: true },
@@ -8,8 +8,8 @@ const BlogSchema = new mongoose.Schema(
     excerpt: { type: String, required: true },
     content: { type: String, required: true }, // HTML content
     // Optional structured sections: stored alongside content for flexibility
-    sections: {
-      type: [
+    sections: { 
+      type: [ 
         new mongoose.Schema(
           {
             heading: { type: String, default: '' },
