@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 export async function adminAuth(req, res, next) {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
-
+    
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
     }
