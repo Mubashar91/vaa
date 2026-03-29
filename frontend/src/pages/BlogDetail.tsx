@@ -49,6 +49,12 @@ interface BlogPost {
 // Chart data for different blog posts
 const COLORS = ['#d4af37', '#3b82f6', '#8b5cf6', '#22c55e', '#ef4444', '#f59e0b'];
 
+function setMeta(name: string, content: string) {
+  let el = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+  if (!el) { el = document.createElement('meta'); el.name = name; document.head.appendChild(el); }
+  el.content = content;
+}
+
 // Blog 1: Cost Savings - Bar Chart
 const blog1CostData = [
   { category: 'Office Space', traditional: 9600, withVA: 0 },
@@ -151,6 +157,11 @@ const BlogDetail = () => {
             sections: enData.blog.sections,
           };
           setPost(blogPost);
+
+          // Inject SEO meta tags from the current language blog
+          if (enData.blog.metaTitle) document.title = enData.blog.metaTitle;
+          setMeta('description', enData.blog.metaDescription || '');
+          setMeta('keywords', enData.blog.metaKeywords || '');
         }
         
         if (deRes.ok) {

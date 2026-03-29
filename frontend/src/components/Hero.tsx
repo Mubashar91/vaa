@@ -7,6 +7,12 @@ import { useTranslation } from "react-i18next";
 // API Configuration
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.don-va.com';
 
+function setMeta(name: string, content: string) {
+  let el = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+  if (!el) { el = document.createElement('meta'); el.name = name; document.head.appendChild(el); }
+  el.content = content;
+}
+
 interface HeroData {
   title: string;
   subtitle: string;
@@ -69,6 +75,12 @@ export const Hero = () => {
         
         const data = await response.json();
         setHeroData(data.hero);
+
+        // Inject SEO meta tags
+        const hero = data.hero;
+        if (hero?.metaTitle) document.title = hero.metaTitle;
+        setMeta('description', hero?.metaDescription || '');
+        setMeta('keywords', hero?.metaKeywords || '');
       } catch (err) {
         if (import.meta.env.DEV) {
           console.error('Error fetching hero:', err);

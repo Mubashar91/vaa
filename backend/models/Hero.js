@@ -14,6 +14,9 @@ const HeroSchema = new mongoose.Schema(
       costSaved: { type: String, required: true },
       rating: { type: String, required: true },
     },
+    metaTitle: { type: String, default: '' },
+    metaDescription: { type: String, default: '' },
+    metaKeywords: { type: String, default: '' },
   },
   { timestamps: true }
 );

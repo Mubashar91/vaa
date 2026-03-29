@@ -17,6 +17,9 @@ interface CaseStudy {
   image: string;
   stats: { costSaved: string; timeframe: string; vaCount: string };
   order: number;
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
 }
 
 const API_BASE =
@@ -173,6 +176,9 @@ export default function AdminCaseStudy() {
       image: c.image,
       stats: c.stats,
       order: c.order,
+      metaTitle: c.metaTitle,
+      metaDescription: c.metaDescription,
+      metaKeywords: c.metaKeywords,
     };
     const url = `${API_BASE}/api/admin/case-studies/${c.caseStudyId}`;
     setSavingId(c.caseStudyId);
@@ -199,7 +205,7 @@ export default function AdminCaseStudy() {
   };
 
   const [newCaseStudy, setNewCaseStudy] = useState<CaseStudy>({
-    caseStudyId: 1, title: '', company: '', industry: '', challenge: '', solution: '', results: [], testimonial: '', testimonialAuthor: '', testimonialRole: '', image: '', stats: { costSaved: '', timeframe: '', vaCount: '' }, order: 0
+    caseStudyId: 1, title: '', company: '', industry: '', challenge: '', solution: '', results: [], testimonial: '', testimonialAuthor: '', testimonialRole: '', image: '', stats: { costSaved: '', timeframe: '', vaCount: '' }, order: 0, metaTitle: '', metaDescription: '', metaKeywords: ''
   });
 
   const prefillSample = () => {
@@ -541,6 +547,6 @@ export default function AdminCaseStudy() {
 }
 
 function isEqualCaseStudy(a: CaseStudy, b: CaseStudy) {
-  return a.caseStudyId===b.caseStudyId && a.title===b.title && a.company===b.company && a.industry===b.industry && a.challenge===b.challenge && a.solution===b.solution && JSON.stringify(a.results || [])===JSON.stringify(b.results || []) && a.testimonial===b.testimonial && a.testimonialAuthor===b.testimonialAuthor && a.testimonialRole===b.testimonialRole && a.image===b.image && JSON.stringify(a.stats || {})===JSON.stringify(b.stats || {}) && a.order===b.order;
+  return a.caseStudyId===b.caseStudyId && a.title===b.title && a.company===b.company && a.industry===b.industry && a.challenge===b.challenge && a.solution===b.solution && JSON.stringify(a.results || [])===JSON.stringify(b.results || []) && a.testimonial===b.testimonial && a.testimonialAuthor===b.testimonialAuthor && a.testimonialRole===b.testimonialRole && a.image===b.image && JSON.stringify(a.stats || {})===JSON.stringify(b.stats || {}) && a.order===b.order && a.metaTitle===b.metaTitle && a.metaDescription===b.metaDescription && a.metaKeywords===b.metaKeywords;
 }
 

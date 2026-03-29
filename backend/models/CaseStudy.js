@@ -16,6 +16,9 @@ const CaseStudySchema = new mongoose.Schema(
     image: { type: String, required: true },
     stats: { type: mongoose.Schema.Types.Mixed, required: true }, // Object with costSaved, timeframe, vaCount
     order: { type: Number, default: 0 }, // For ordering
+    metaTitle: { type: String, default: '' },
+    metaDescription: { type: String, default: '' },
+    metaKeywords: { type: String, default: '' },
   },
   { timestamps: true }
 );

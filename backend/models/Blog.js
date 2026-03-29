@@ -27,6 +27,9 @@ const BlogSchema = new mongoose.Schema(
     image: { type: String, required: true },
     charts: { type: mongoose.Schema.Types.Mixed, default: null }, // JSON for charts config
     order: { type: Number, default: 0 }, // For ordering
+    metaTitle: { type: String, default: '' },
+    metaDescription: { type: String, default: '' },
+    metaKeywords: { type: String, default: '' },
   },
   { timestamps: true }
 );

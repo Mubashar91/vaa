@@ -8,6 +8,12 @@ import { type CaseStudy } from "@/data/caseStudies";
 // API Configuration
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.don-va.com';
 
+function setMeta(name: string, content: string) {
+  let el = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+  if (!el) { el = document.createElement('meta'); el.name = name; document.head.appendChild(el); }
+  el.content = content;
+}
+
 interface CaseStudyFromAPI {
   caseStudyId: number;
   title: string;
@@ -21,6 +27,9 @@ interface CaseStudyFromAPI {
   testimonialRole: string;
   image: string;
   stats: { costSaved: string; timeframe: string; vaCount: string };
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
 }
 
 const CaseStudyDetail = () => {
@@ -87,6 +96,11 @@ const CaseStudyDetail = () => {
           stats: cs.stats,
         };
         setCaseStudy(mappedCaseStudy);
+
+        // Inject SEO meta tags
+        if (cs.metaTitle) document.title = cs.metaTitle;
+        setMeta('description', cs.metaDescription || '');
+        setMeta('keywords', cs.metaKeywords || '');
 
         // Fetch all case studies for related section
         const allRes = await fetch(`${API_BASE}/api/case-studies?lang=${currentLang}`);
