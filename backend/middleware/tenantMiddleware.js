@@ -4,16 +4,19 @@
  */
 export const tenantMiddleware = (req, res, next) => {
     const tenantId = req.headers['x-tenant-id'];
-
+    
+    // Public endpoints that don't need tenant ID
+    const publicEndpoints = ['/health', '/api/auth/login', '/api/auth/signup'];
+    
     if (!tenantId) {
+        // Allow public endpoints without tenant ID
+        if (publicEndpoints.some(endpoint => req.path.startsWith(endpoint))) {
+            req.tenantId = 'donva'; // Default tenant
+            return next();
+        }
+        
         return res.status(400).json({ error: 'X-Tenant-ID header is missing. Required for multi-tenant support.' });
     }
-
-    // Optional: Validate if tenant is allowed/configured
-    // const config = getTenantConfig();
-    // if (!config[tenantId]) {
-    //   return res.status(404).json({ error: 'Tenant not found' });
-    // }
 
     req.tenantId = tenantId;
     next();
