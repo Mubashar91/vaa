@@ -1,57 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+
   <url>
     <loc>https://don-va.com/</loc>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://don-va.com/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://don-va.com/de/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://don-va.com/" />
   </url>
+
   <url>
     <loc>https://don-va.com/contact</loc>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://don-va.com/contact" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://don-va.com/de/contact" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://don-va.com/contact" />
   </url>
+
   <url>
     <loc>https://don-va.com/book-meeting</loc>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://don-va.com/book-meeting" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://don-va.com/de/book-meeting" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://don-va.com/book-meeting" />
   </url>
-  <!-- Add more static pages here if you create them later -->
-  <!-- Example: /about, /services, /pricing, /faq, /testimonials, /case-studies, /blog -->
-  <!-- Dynamic content placeholders (you can replace these with actual URLs once you have content) -->
+
   <url>
     <loc>https://don-va.com/blog</loc>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://don-va.com/blog" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://don-va.com/de/blog" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://don-va.com/blog" />
   </url>
+
   <url>
     <loc>https://don-va.com/case-studies</loc>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://don-va.com/case-studies" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://don-va.com/de/case-studies" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://don-va.com/case-studies" />
   </url>
-  <!-- If you later create static pages, add them here with appropriate priority/frequency -->
-  <!-- <url>
-    <loc>https://don-va.com/about</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://don-va.com/services</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://don-va.com/pricing</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://don-va.com/faq</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://don-va.com/testimonials</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url> -->
+
 </urlset>

@@ -1,12 +1,18 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+import { useSEO } from "@/hooks/useSEO";
 
 const NotFound = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  useSEO({
+    title: "404 — Page Not Found | Donva",
+    description: "The page you are looking for does not exist.",
+    noindex: true,
+  });
+
   useEffect(() => {
-    // Log 404 errors in development only
     if (import.meta.env.DEV) {
       console.error("404 Error: User attempted to access non-existent route:", location.pathname);
     }

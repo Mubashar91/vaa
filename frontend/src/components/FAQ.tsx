@@ -48,6 +48,32 @@ export const FAQ = () => {
     };
   }, [i18n]);
 
+  // Inject FAQ JSON-LD structured data when FAQs are loaded
+  useEffect(() => {
+    if (faqs.length === 0) return;
+
+    const existing = document.getElementById('faq-jsonld');
+    if (existing) existing.remove();
+
+    const script = document.createElement('script');
+    script.id = 'faq-jsonld';
+    script.type = 'application/ld+json';
+    script.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: faqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+      })),
+    });
+    document.head.appendChild(script);
+
+    return () => {
+      document.getElementById('faq-jsonld')?.remove();
+    };
+  }, [faqs]);
+
   // Fetch FAQs from API
   useEffect(() => {
     const fetchFAQs = async () => {
